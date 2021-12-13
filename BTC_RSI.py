@@ -8,6 +8,7 @@ timeFrame = '5min'  #1min, 1hour, 1day, 1week
 # stopLoseAt = -5  #?change it if you want
 waitForNextCheck = 5 * 60  # 5 minute
 waitForSell = 120 * 60  # 2 hour
+waitForSkipLoss = 120 * 60  # 2 hour
 howMuchShouldIBuy = 30  # $
 dataOfChart = 'Data/DataForIndicator_BTC_RSI.csv'
 saveDataHere = 'Trade_Information/orderHistory_BTC_RSI.csv'
@@ -43,9 +44,9 @@ def RSI():
     RSIs = talib.RSI(candleClose, timeperiod=timePeriodForRSI)
     currentRSI = RSIs[-1]
 
-    if currentRSI <= RSILevelToBuy:
+    if RSILevelToBuy - 5 <= currentRSI <= RSILevelToBuy:
         createOrder()
-        wait(waitForSell)
+        wait_profitChecker(waitForSell)
         closeOrder()
     else:
         wait(waitForNextCheck)
@@ -87,6 +88,27 @@ def wait(second):
         print(timer, end="\r") 
         time.sleep(1) 
         second -= 1
+
+def wait_profitChecker(second):
+    while second:
+        mins, secs = divmod(second, 60) 
+        timer = 'Time Left: {:02d}:{:02d}'.format(mins, secs) 
+        print(timer, end="\r") 
+        time.sleep(1) 
+        second -= 1
+
+        TenMinOnAfterLastProfitCheck = (second // (10 * 60) == 0)
+        if TenMinOnAfterLastProfitCheck:
+            checkProfit()
+            continue
+
+def checkProfit():
+    profit = float(sellPrice / buyPrice)*100 - 100
+    print('check profit: ', profit)
+
+    if (profit <= -.4):
+        closeOrder()
+        wait(waitForSkipLoss)
 
 def alarm(type):
     if type == 'error':

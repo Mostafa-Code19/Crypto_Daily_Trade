@@ -105,6 +105,6 @@ def alarm(type):
         playsound('Alarms/Error.mp3')
 
 print('Turn on the openVPN')
-print(time.ctime(time.time()))
 while True:
+    print(time.ctime(time.time()))
     start()

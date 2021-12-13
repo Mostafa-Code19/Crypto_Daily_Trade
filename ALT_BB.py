@@ -3,14 +3,14 @@ from playsound import playsound
 from numpy import genfromtxt as gft
 from coinex.coinex import CoinEx
 
-CryptoToTrade = 'ETH'
+CryptoToTrade = 'XRP'
 timeFrame = '5min'  #1min, 1hour, 1day, 1week
 # stopLoseAt = -5  #?change it if you want
 waitForNextCheck = 5 * 60  # 5 minute
 waitForSell = 60 * 60  # 2 hour
 howMuchShouldIBuy = 30  # $
-dataOfChart = 'Data/DataForIndicator_ETH_BB.csv'
-saveDataHere = 'Trade_Information/orderHistory_ETH_BB.csv'
+dataOfChart = 'Data/DataForIndicator_ALT_BB.csv'
+saveDataHere = 'Trade_Information/orderHistory_ALT_BB.csv'
 timePeriodForBB = 20
 BBLevelToBuy = 35
 orderCounter = 1
@@ -26,7 +26,7 @@ def start():
     BB()
 
 def getDataForAnalyse():
-    csvFile = open("Data/DataForIndicator_ETH_BB.csv", 'w', newline='')
+    csvFile = open("Data/DataForIndicator_ALT_BB.csv", 'w', newline='')
     candleStickWriter = csv.writer(csvFile, delimiter = ',')
     #date, open, close, high, low, volume, amount | 5m-16h | 30m-336
 
