@@ -47,8 +47,7 @@ def RSI():
 
     if RSILevelToBuy - 5 <= currentRSI <= RSILevelToBuy:
         createOrder()
-        wait_profitChecker(waitForSell)
-        closeOrder()
+        waitForSell(waitForSell)
     else:
         wait(waitForNextCheck)
    
@@ -90,8 +89,8 @@ def wait(second):
         time.sleep(1) 
         second -= 1
 
-def wait_profitChecker(second):
-    while second:
+def waitForSell(second):
+    while True:
         mins, secs = divmod(second, 60) 
         timer = 'Time Left: {:02d}:{:02d}'.format(mins, secs) 
         print(timer, end="\r") 
@@ -101,11 +100,11 @@ def wait_profitChecker(second):
         TenMinOnAfterLastProfitCheck = (second // (10 * 60) == 0)
         if TenMinOnAfterLastProfitCheck:
             checkProfit()
-            continue
+        elif second == 0:
+            closeOrder()
 
 def checkProfit():
     profit = float(sellPrice / buyPrice)*100 - 100
-    print('check profit: ', profit)
 
     if (profit <= -.4):
         closeOrder()

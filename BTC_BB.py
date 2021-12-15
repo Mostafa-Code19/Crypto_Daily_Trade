@@ -5,32 +5,36 @@ from coinex.coinex import CoinEx
 
 CryptoToTrade = 'BTC'
 timeFrame = '5min'  #1min, 1hour, 1day, 1week
-# stopLoseAt = -5  #?change it if you want
-waitForNextCheck = 5 * 60  # 5 minute
-waitForSell = 60 * 60  # 2 hour
 howMuchShouldIBuy = 30  # $
-dataOfChart = 'Data/DataForIndicator_BTC_BB.csv'
-saveDataHere = 'Trade_Information/orderHistory_BTC_BB.csv'
-timePeriodForBB = 20
-BBLevelToBuy = 35
-orderCounter = 1
+
 access_id = '9AB450BFC9574FF2A081D257A691D556'
 secret_key = '1343602FFD3EA564E432286088A534EAEC29F8145D1078EC'
 coinex = CoinEx(access_id, secret_key)
+dataOfChart = 'Data/DataForIndicator_BTC_BB.csv'
+saveDataHere = 'Trade_Information/orderHistory_BTC_BB.csv'
+splittedCandle = gft(dataOfChart, delimiter=',')
+fiveMin = 5 * 60
+timePeriodForBB = 20
 buyPrice = 0
 sellPrice = 0
-splittedCandle = gft(dataOfChart, delimiter=',')
+orderCounter = 1
+nbDev = .5
 
 def start():
-    getDataForAnalyse()
-    BB()
-
+    while True:
+        try:
+            print(time.ctime(time.time()))
+            getDataForAnalyse()
+            BB()
+        except:
+            return
+        
 def getDataForAnalyse():
     csvFile = open("Data/DataForIndicator_BTC_BB.csv", 'w', newline='')
     candleStickWriter = csv.writer(csvFile, delimiter = ',')
     #date, open, close, high, low, volume, amount | 5m-16h | 30m-336
 
-    request = requests.get(f"https://api.coinex.com/v1/market/kline?market={CryptoToTrade+'USDT'}&type={timeFrame}&limit=336")
+    request = requests.get(f"https://api.coinex.com/v1/market/kline?market={CryptoToTrade+'USDT'}&type={timeFrame}&limit=30")
     response = (request.json())['data']
 
     for candles in response:
@@ -39,29 +43,32 @@ def getDataForAnalyse():
 
 def BB():
     candlesClose = splittedCandle[:,2]
-    currentCandleClose = candlesClose[-1]
-    lastCandleClose = candlesClose[-2]
     global buyPrice
-    buyPrice = currentCandleClose
-    upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=timePeriodForBB, nbdevup=2, nbdevdn=2, matype=0)
+    buyPrice = candlesClose[-1]
+    upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=timePeriodForBB, nbdevup=nbDev, nbdevdn=nbDev, matype=0)
 
-    currentMiddleBB = middleBB[-1]
-
-    if lastCandleClose < currentMiddleBB and currentCandleClose > currentMiddleBB:
+    if candlesClose[-1] < lowerBB[-1] and RSI():
         createOrder()
-        wait(waitForSell)
-        closeOrder()
     else:
-        wait(waitForNextCheck)
-   
+        wait(fiveMin)
+
 def createOrder():
     # print(coinex.order_market(CryptoToTrade + 'USDT', 'buy', howMuchShouldIBuy))
     global orderCounter
     print('new order. #', orderCounter)
     orderCounter += 1
-    # alarm('buy')
 
-def closeOrder():
+    waitForSellPosition()
+
+def RSI():
+    candlesClose = splittedCandle[:,2]
+    RSIs = talib.RSI(candlesClose, timeperiod=14)
+    currentRSI = RSIs[-1]
+
+    if currentRSI >= 40:
+        return True
+
+def closeOrder(type):
     # wallet = coinex.balance_info()
     # assest = (wallet[CryptoToTrade])['available']
     getDataForAnalyse()
@@ -74,7 +81,17 @@ def closeOrder():
     print(f'Profit: {profit}')
     print('=======================================')
 
-    return saveData(profit)
+    saveData(profit)
+
+    if type == 'loss' and checkTheTrend() != 'upTrend':
+        wait(120*60)
+
+    start()  # Start New Run
+
+def checkTheTrend():
+    candlesClose = splittedCandle[:,2]
+    if candlesClose[-1] > (candlesClose[-1 - 144]):
+        return 'upTrend'
 
 def saveData(tradeData):
     tradeDataCSV = open(saveDataHere, 'a', newline='')
@@ -92,19 +109,33 @@ def wait(second):
         time.sleep(1) 
         second -= 1
 
-def alarm(type):
-    if type == 'error':
-        playsound('/Alarms/Error.mp3')
-    elif type == 'buy':
-        playsound('Alarms/Buy.mp3')
-    elif type == 'profit':
-        playsound('Alarms/Profit.mp3')
-    elif type == 'sell':
-        playsound('Alarms/Sell.mp3')
-    else:
-        playsound('Alarms/Error.mp3')
+def waitForSellPosition():
+    while True:
+        checkPosition()
+        wait(fiveMin)
+
+def checkPosition():
+    getDataForAnalyse()
+    candlesClose = splittedCandle[:,2]
+
+    upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=timePeriodForBB, nbdevup=nbDev, nbdevdn=nbDev, matype=0)
+
+    print(candlesClose[-1])
+    print(upperBB[-1])
+
+    profit = checkProfit(candlesClose[-1])
+
+    if candlesClose[-1] > upperBB[-1] or profit <= -1:
+        print('going to sell')
+
+        if profit <= -1:
+            closeOrder('loss')
+        else:
+            closeOrder('win')
+
+def checkProfit(sellPrice):
+    profit = float(sellPrice / buyPrice)*100 - 100
+    return profit
 
 print('Turn on the openVPN')
-while True:
-    print(time.ctime(time.time()))
-    start()
+start()
