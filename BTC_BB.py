@@ -15,6 +15,8 @@ saveDataHere = 'Trade_Information/orderHistory_BTC_BB.csv'
 fiveMin = 5 * 60
 timePeriodForBB = 20
 RSILevelToBuy = 30
+RSILessThan = 80
+saveProfit = 1
 trendTimeFrame = 240  # Minute
 whenStopLoss = -1
 buyPrice = 0
@@ -71,7 +73,7 @@ def RSI():
     RSIs = talib.RSI(candlesClose, timeperiod=14)
     currentRSI = RSIs[-1]
 
-    if currentRSI >= RSILevelToBuy:
+    if RSILessThan >= currentRSI >= RSILevelToBuy:
         return True
 
 def closeOrder():
@@ -128,7 +130,8 @@ def checkPosition():
     profit = checkProfit(candlesClose[-1])
 
     if candlesClose[-1] > upperBB[-1] \
-        or profit <= whenStopLoss:
+        or profit <= whenStopLoss \
+        or profit >= saveProfit:
             closeOrder()
 
 def checkProfit(sellPrice):
