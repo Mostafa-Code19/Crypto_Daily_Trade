@@ -16,6 +16,7 @@ fiveMin = 5 * 60
 timePeriodForBB = 20
 RSILevelToBuy = 30
 trendTimeFrame = 240  # Minute
+whenStopLoss = -1
 buyPrice = 0
 sellPrice = 0
 orderCounter = 1
@@ -50,7 +51,7 @@ def BB():
     upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=timePeriodForBB, nbdevup=nbDev, nbdevdn=nbDev, matype=0)
 
     if candlesClose[-1] < lowerBB[-1] \
-        and RSI() == 'RSI_OK' \
+        and RSI() \
         and checkTheTrend() == 'upTrend':
             createOrder()
     else:
@@ -71,7 +72,7 @@ def RSI():
     currentRSI = RSIs[-1]
 
     if currentRSI >= RSILevelToBuy:
-        return 'RSI_OK'
+        return True
 
 def closeOrder():
     # wallet = coinex.balance_info()
@@ -123,21 +124,12 @@ def checkPosition():
     getDataForAnalyse()
     splittedCandle = gft(dataOfChart, delimiter=',')
     candlesClose = splittedCandle[:,2]
-
     upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=timePeriodForBB, nbdevup=nbDev, nbdevdn=nbDev, matype=0)
-
-    print(candlesClose[-1])
-    print(upperBB[-1])
-
     profit = checkProfit(candlesClose[-1])
 
-    if candlesClose[-1] > upperBB[-1] or profit <= -1:
-        print('going to sell')
-
-        if profit <= -1:
-            closeOrder('loss')
-        else:
-            closeOrder('win')
+    if candlesClose[-1] > upperBB[-1] \
+        or profit <= whenStopLoss:
+            closeOrder()
 
 def checkProfit(sellPrice):
     profit = float(sellPrice / buyPrice)*100 - 100

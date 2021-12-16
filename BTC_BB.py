@@ -14,10 +14,13 @@ dataOfChart = 'Data/DataForIndicator_BTC_BB.csv'
 saveDataHere = 'Trade_Information/orderHistory_BTC_BB.csv'
 fiveMin = 5 * 60
 timePeriodForBB = 20
+RSILevelToBuy = 30
+trendTimeFrame = 240  # Minute
+whenStopLoss = -1
 buyPrice = 0
 sellPrice = 0
 orderCounter = 1
-nbDev = .5
+nbDev = 2
 
 def start():
     while True:
@@ -47,8 +50,10 @@ def BB():
     buyPrice = candlesClose[-1]
     upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=timePeriodForBB, nbdevup=nbDev, nbdevdn=nbDev, matype=0)
 
-    if candlesClose[-1] < lowerBB[-1] and RSI() == 'RSI_OK':
-        createOrder()
+    if candlesClose[-1] < lowerBB[-1] \
+        and RSI() \
+        and checkTheTrend() == 'upTrend':
+            createOrder()
     else:
         wait(fiveMin)
 
@@ -66,10 +71,10 @@ def RSI():
     RSIs = talib.RSI(candlesClose, timeperiod=14)
     currentRSI = RSIs[-1]
 
-    if currentRSI >= 40:
-        return 'RSI_OK'
+    if currentRSI >= RSILevelToBuy:
+        return True
 
-def closeOrder(type):
+def closeOrder():
     # wallet = coinex.balance_info()
     # assest = (wallet[CryptoToTrade])['available']
     getDataForAnalyse()
@@ -85,15 +90,13 @@ def closeOrder(type):
 
     saveData(profit)
 
-    if type == 'loss' and checkTheTrend() != 'upTrend':
-        wait(120*60)
-
     start()  # Start New Run
 
 def checkTheTrend():
     splittedCandle = gft(dataOfChart, delimiter=',')
     candlesClose = splittedCandle[:,2]
-    if candlesClose[-1] > (candlesClose[-1 - 144]):
+    if candlesClose[-1] \
+        >= (candlesClose[int(-1 - (trendTimeFrame / 5))] ):
         return 'upTrend'
 
 def saveData(tradeData):
@@ -121,21 +124,12 @@ def checkPosition():
     getDataForAnalyse()
     splittedCandle = gft(dataOfChart, delimiter=',')
     candlesClose = splittedCandle[:,2]
-
     upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=timePeriodForBB, nbdevup=nbDev, nbdevdn=nbDev, matype=0)
-
-    print(candlesClose[-1])
-    print(upperBB[-1])
-
     profit = checkProfit(candlesClose[-1])
 
-    if candlesClose[-1] > upperBB[-1] or profit <= -1:
-        print('going to sell')
-
-        if profit <= -1:
-            closeOrder('loss')
-        else:
-            closeOrder('win')
+    if candlesClose[-1] > upperBB[-1] \
+        or profit <= whenStopLoss:
+            closeOrder()
 
 def checkProfit(sellPrice):
     profit = float(sellPrice / buyPrice)*100 - 100
