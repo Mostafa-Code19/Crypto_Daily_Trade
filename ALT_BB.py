@@ -12,7 +12,6 @@ secret_key = '1343602FFD3EA564E432286088A534EAEC29F8145D1078EC'
 coinex = CoinEx(access_id, secret_key)
 dataOfChart = 'Data/DataForIndicator_ALT_BB.csv'
 saveDataHere = 'Trade_Information/orderHistory_ALT_BB.csv'
-splittedCandle = gft(dataOfChart, delimiter=',')
 fiveMin = 5 * 60
 timePeriodForBB = 20
 buyPrice = 0
@@ -42,12 +41,13 @@ def getDataForAnalyse():
     csvFile.close()
 
 def BB():
+    splittedCandle = gft(dataOfChart, delimiter=',')
     candlesClose = splittedCandle[:,2]
     global buyPrice
     buyPrice = candlesClose[-1]
     upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=timePeriodForBB, nbdevup=nbDev, nbdevdn=nbDev, matype=0)
 
-    if candlesClose[-1] < lowerBB[-1] and RSI():
+    if candlesClose[-1] < lowerBB[-1] and RSI() == 'RSI_OK':
         createOrder()
     else:
         wait(fiveMin)
@@ -61,17 +61,19 @@ def createOrder():
     waitForSellPosition()
 
 def RSI():
+    splittedCandle = gft(dataOfChart, delimiter=',')
     candlesClose = splittedCandle[:,2]
     RSIs = talib.RSI(candlesClose, timeperiod=14)
     currentRSI = RSIs[-1]
 
     if currentRSI >= 40:
-        return True
+        return 'RSI_OK'
 
 def closeOrder(type):
     # wallet = coinex.balance_info()
     # assest = (wallet[CryptoToTrade])['available']
     getDataForAnalyse()
+    splittedCandle = gft(dataOfChart, delimiter=',')
     candleClose = splittedCandle[:,2][-1]
     global sellPrice
     sellPrice = candleClose
@@ -89,6 +91,7 @@ def closeOrder(type):
     start()  # Start New Run
 
 def checkTheTrend():
+    splittedCandle = gft(dataOfChart, delimiter=',')
     candlesClose = splittedCandle[:,2]
     if candlesClose[-1] > (candlesClose[-1 - 144]):
         return 'upTrend'
@@ -116,6 +119,7 @@ def waitForSellPosition():
 
 def checkPosition():
     getDataForAnalyse()
+    splittedCandle = gft(dataOfChart, delimiter=',')
     candlesClose = splittedCandle[:,2]
 
     upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=timePeriodForBB, nbdevup=nbDev, nbdevdn=nbDev, matype=0)
