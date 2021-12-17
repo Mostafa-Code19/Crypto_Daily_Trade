@@ -3,7 +3,7 @@ from playsound import playsound
 from numpy import genfromtxt as gft
 from coinex.coinex import CoinEx
 
-CryptoToTrade = 'DOGE'
+CryptoToTrade = 'TRX'
 timeFrame = '5min'  #1min, 1hour, 1day, 1week
 howMuchShouldIBuy = 30  # $
 
@@ -50,15 +50,16 @@ def getDataForAnalyse():
 
 def BB():
     splittedCandle = gft(dataOfChart, delimiter=',')
-    candlesClose = splittedCandle[:,2]
+    candlesLowest = splittedCandle[:,4]
+
     global buyPrice
-    buyPrice = candlesClose[-2]
-    upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=timePeriodForBB, nbdevup=nbDev, nbdevdn=nbDev, matype=0)
+    buyPrice = candlesLowest[-2]
+    upperBB, middleBB, lowerBB = talib.BBANDS(candlesLowest, timeperiod=timePeriodForBB, nbdevup=nbDev, nbdevdn=nbDev, matype=0)
 
-    checkListForMakingOrder(candlesClose, lowerBB)
+    checkListForMakingOrder(candlesLowest, lowerBB)
 
-def checkListForMakingOrder(candlesClose, lowerBB):
-    BB_Ready = candlesClose[-2] < lowerBB[-2]
+def checkListForMakingOrder(candlesLowest, lowerBB):
+    BB_Ready = candlesLowest[-2] < lowerBB[-2]
     RSI_Ready = RSI()
     upTrend_Ready = checkTheTrend() == 'upTrend'
 
@@ -88,6 +89,8 @@ def RSI():
 
     if RSILessThan >= currentRSI >= RSILevelToBuy:
         return True
+    else:
+        return False
 
 def checkTheTrend():
     splittedCandle = gft(dataOfChart, delimiter=',')
@@ -105,10 +108,10 @@ def wait(second):
 
 def waitForSellPosition():
     while True:
-        checkPosition()
+        checkListForStopOrder()
         wait(fiveMin)
 
-def checkPosition():
+def checkListForStopOrder():
     getDataForAnalyse()
     splittedCandle = gft(dataOfChart, delimiter=',')
     candlesClose = splittedCandle[:,2]
