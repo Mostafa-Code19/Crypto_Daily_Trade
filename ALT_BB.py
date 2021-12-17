@@ -1,4 +1,4 @@
-import requests, time, json, logging, talib, csv
+import requests, time, talib, csv
 from playsound import playsound
 from numpy import genfromtxt as gft
 from coinex.coinex import CoinEx
@@ -14,6 +14,7 @@ dataOfChart = 'Data/DataForIndicator_ALT_BB.csv'
 saveDataHere = 'Trade_Information/orderHistory_ALT_BB.csv'
 fiveMin = 5 * 60
 timePeriodForBB = 20
+nbDev = 2
 RSILevelToBuy = 30
 RSILessThan = 80
 saveProfit = 1
@@ -22,24 +23,26 @@ whenStopLoss = -1
 buyPrice = 0
 sellPrice = 0
 orderCounter = 1
-nbDev = 2
 
 def start():
+    print(time.ctime(time.time()))
     while True:
         try:
-            print(time.ctime(time.time()))
             getDataForAnalyse()
             BB()
         except:
-            return
+            print('Error...')
+            print(time.ctime(time.time()))
+            playsound('Alarms/Rocket.wav')
+            continue
         
 def getDataForAnalyse():
+    request = requests.get(f"https://api.coinex.com/v1/market/kline?market={CryptoToTrade+'USDT'}&type={timeFrame}&limit=30")
+    response = (request.json())['data']
+
     csvFile = open("Data/DataForIndicator_ALT_BB.csv", 'w', newline='')
     candleStickWriter = csv.writer(csvFile, delimiter = ',')
     #date, open, close, high, low, volume, amount | 5m-16h | 30m-336
-
-    request = requests.get(f"https://api.coinex.com/v1/market/kline?market={CryptoToTrade+'USDT'}&type={timeFrame}&limit=30")
-    response = (request.json())['data']
 
     for candles in response:
         candleStickWriter.writerow(candles)
@@ -52,6 +55,9 @@ def BB():
     buyPrice = candlesClose[-1]
     upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=timePeriodForBB, nbdevup=nbDev, nbdevdn=nbDev, matype=0)
 
+    checkListForMakingOrder(candlesClose, lowerBB)
+
+def checkListForMakingOrder(candlesClose, lowerBB):
     if candlesClose[-1] < lowerBB[-1] \
         and RSI() \
         and checkTheTrend() == 'upTrend':
@@ -76,38 +82,11 @@ def RSI():
     if RSILessThan >= currentRSI >= RSILevelToBuy:
         return True
 
-def closeOrder():
-    # wallet = coinex.balance_info()
-    # assest = (wallet[CryptoToTrade])['available']
-    getDataForAnalyse()
-    splittedCandle = gft(dataOfChart, delimiter=',')
-    candleClose = splittedCandle[:,2][-1]
-    global sellPrice
-    sellPrice = candleClose
-    profit = float(sellPrice / buyPrice)*100 - 100
-
-    # print(coinex.order_limit(CryptoToTrade + 'USDT', 'sell', assest, sellPrice[-1]))
-    print(f'Profit: {profit}')
-    print('=======================================')
-
-    saveData(profit)
-
-    start()  # Start New Run
-
 def checkTheTrend():
     splittedCandle = gft(dataOfChart, delimiter=',')
     candlesClose = splittedCandle[:,2]
-    if candlesClose[-1] \
-        >= (candlesClose[int(-1 - (trendTimeFrame / 5))] ):
+    if candlesClose[-1] >= (candlesClose[int(-1 - (trendTimeFrame / 5))] ):
         return 'upTrend'
-
-def saveData(tradeData):
-    tradeDataCSV = open(saveDataHere, 'a', newline='')
-    writer = csv.writer(tradeDataCSV)
-    date = {time.ctime(time.time())}
-    detailOfTrade = (str(tradeData)[:6]), (CryptoToTrade), (date)
-    writer.writerow(detailOfTrade)
-    tradeDataCSV.close()
 
 def wait(second):
     while second:
@@ -137,6 +116,31 @@ def checkPosition():
 def checkProfit(sellPrice):
     profit = float(sellPrice / buyPrice)*100 - 100
     return profit
+
+def closeOrder():
+    # wallet = coinex.balance_info()
+    # assest = (wallet[CryptoToTrade])['available']
+    getDataForAnalyse()
+    splittedCandle = gft(dataOfChart, delimiter=',')
+    candleClose = splittedCandle[:,2][-1]
+    global sellPrice
+    sellPrice = candleClose
+    profit = float(sellPrice / buyPrice)*100 - 100
+
+    # print(coinex.order_limit(CryptoToTrade + 'USDT', 'sell', assest, sellPrice[-1]))
+    print(f'Profit: {profit}')
+    print('=======================================')
+
+    saveData(profit)
+    start()  # Start New Run
+
+def saveData(tradeData):
+    tradeDataCSV = open(saveDataHere, 'a', newline='')
+    writer = csv.writer(tradeDataCSV)
+    date = {time.ctime(time.time())}
+    detailOfTrade = (str(tradeData)[:6]), (CryptoToTrade), (date)
+    writer.writerow(detailOfTrade)
+    tradeDataCSV.close()
 
 print('Turn on the openVPN')
 start()
