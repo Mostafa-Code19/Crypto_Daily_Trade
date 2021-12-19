@@ -19,17 +19,18 @@ RSILevelToBuy = 30
 RSILessThan = 80
 saveProfit = 1
 trendTimeFrame = 600  # Minute
-whenStopLoss = -1
+whenStopLoss = -0.03
 buyPrice = 0
 sellPrice = 0
 orderCounter = 1
+leverage = 3
 
 def start():
     print(time.ctime(time.time()))
     while True:
         try:
             getDataForAnalyse()
-            BB()
+            checkListForMakingOrder()
         except Exception as e:
             print('Error...', e)
             print(time.ctime(time.time()))
@@ -48,9 +49,8 @@ def getDataForAnalyse():
         candleStickWriter.writerow(candles)
     csvFile.close()
 
-def RSI():
-    splittedCandle = gft(dataOfChart, delimiter=',')
-    candlesClose = splittedCandle[:,2]
+def RSI(candlesClose):
+
     RSIs = talib.RSI(candlesClose, timeperiod=14)
     currentRSI = RSIs[-2]
 
@@ -59,9 +59,7 @@ def RSI():
     else:
         return False
 
-def SMA():
-    splittedCandle = gft(dataOfChart, delimiter=',')
-    candlesClose = splittedCandle[:,2]
+def SMA(candlesClose):
 
     SMAs5 = talib.SMA(candlesClose, timeperiod=5)
     SMAs8 = talib.SMA(candlesClose, timeperiod=8)
@@ -84,38 +82,37 @@ def SMA():
         return False
 
 def checkListForMakingOrder():
-    RSI_Ready = RSI()
-    SMA_Ready = SMA()
+    splittedCandle = gft(dataOfChart, delimiter=',')
+    candlesClose = splittedCandle[:,2]
 
-    # BB RSI UpTrend
+    global buyPrice
+    buyPrice = candlesClose[-2]
+
+    RSI_Ready = RSI(candlesClose)
+    SMA_Ready = SMA(candlesClose)
+    
     print(f'{RSI_Ready} | {SMA_Ready}')
     if SMA_Ready and RSI_Ready:
-            createOrder()
+        createOrder()
     else:
         wait(fiveMin)
 
 def createOrder():
-    # print(coinex.order_market(CryptoToTrade + 'USDT', 'buy', howMuchShouldIBuy))
     global orderCounter
+    # print(coinex.order_market(CryptoToTrade + 'USDT', 'buy', howMuchShouldIBuy))
     print('new order. #', orderCounter)
     print(time.ctime(time.time()))
     orderCounter += 1
 
     waitForSellPosition()
 
-def checkTheTrend():
-    splittedCandle = gft(dataOfChart, delimiter=',')
-    candlesClose = splittedCandle[:,2]
-    if candlesClose[-2] >= (candlesClose[int(-2 - (trendTimeFrame / 5))] ):
-        return 'upTrend'
-
 def wait(second):
     while second:
         mins, secs = divmod(second, 60) 
         timer = 'Time Left: {:02d}:{:02d}'.format(mins, secs) 
-        print(timer, end="\r") 
-        time.sleep(1) 
         second -= 1
+        time.sleep(1) 
+        print(timer, end="\r") 
 
 def waitForSellPosition():
     while True:
@@ -126,10 +123,12 @@ def checkListForStopOrder():
     getDataForAnalyse()
     splittedCandle = gft(dataOfChart, delimiter=',')
     candlesClose = splittedCandle[:,2]
+    candlesHighest = splittedCandle[:,3]
     upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=timePeriodForBB, nbdevup=nbDev, nbdevdn=nbDev, matype=0)
     profit = checkProfit(candlesClose[-2])
 
     if candlesClose[-2] > upperBB[-2] \
+        and candlesHighest[-3] > upperBB[-2] \
         or profit <= whenStopLoss \
         or profit >= saveProfit:
             closeOrder()
