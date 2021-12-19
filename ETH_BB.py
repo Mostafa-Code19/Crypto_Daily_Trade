@@ -59,15 +59,12 @@ def BB():
     checkListForMakingOrder(candlesLowest, lowerBB)
 
 def checkListForMakingOrder(candlesLowest, lowerBB):
-    BB_Ready = candlesLowest[-2] < lowerBB[-2]
     RSI_Ready = RSI()
-    upTrend_Ready = checkTheTrend() == 'upTrend'
+    SMA_Ready = SMA()
 
     # BB RSI UpTrend
-    print(f'{BB_Ready} | {RSI_Ready} | {upTrend_Ready}')
-    if BB_Ready \
-        and RSI_Ready \
-        and upTrend_Ready:
+    print(f'{RSI_Ready} | {SMA_Ready}')
+    if SMA_Ready and RSI_Ready:
             createOrder()
     else:
         wait(fiveMin)
@@ -91,6 +88,28 @@ def RSI():
         return True
     else:
         return False
+
+def SMA():
+    splittedCandle = gft(dataOfChart, delimiter=',')
+    candlesClose = splittedCandle[:,2]
+
+    SMAs5 = talib.SMA(candlesClose, timeperiod=5)
+    SMAs8 = talib.SMA(candlesClose, timeperiod=8)
+    SMAs13 = talib.SMA(candlesClose, timeperiod=13)
+
+    currentSMA5 = SMAs5[-2]
+    previousSMA5 = SMAs5[-3]
+
+    currentSMA8 = SMAs8[-2]
+    previousSMA8 = SMAs8[-3]
+
+    currentSMA13 = SMAs13[-2]
+    previousSMA13 = SMAs13[-3]
+
+    if currentSMA5 > previousSMA5 and \
+       currentSMA8 > previousSMA8 and \
+       currentSMA13 > previousSMA13:
+        return True
 
 def checkTheTrend():
     splittedCandle = gft(dataOfChart, delimiter=',')
