@@ -3,15 +3,15 @@ from playsound import playsound
 from numpy import genfromtxt as gft
 from coinex.coinex import CoinEx
 
-CryptoToTrade = 'ETH'
+CryptoToTrade = 'BTC'
 timeFrame = '5min'  #1min, 1hour, 1day, 1week
 howMuchShouldIBuy = 30  # $
 
 access_id = '9AB450BFC9574FF2A081D257A691D556'
 secret_key = '1343602FFD3EA564E432286088A534EAEC29F8145D1078EC'
 coinex = CoinEx(access_id, secret_key)
-dataOfChart = 'Data/DataForIndicator_ETH_BB.csv'
-saveDataHere = 'Trade_Information/orderHistory_ETH_BB.csv'
+dataOfChart = 'Data/DataForIndicator_BTC.csv'
+saveDataHere = 'Trade_Information/orderHistory_BTC.csv'
 fiveMin = 5 * 60
 timePeriodForBB = 20
 nbDev = .5
@@ -40,43 +40,13 @@ def getDataForAnalyse():
     request = requests.get(f"https://api.coinex.com/v1/market/kline?market={CryptoToTrade+'USDT'}&type={timeFrame}&limit=150")
     response = (request.json())['data']
 
-    csvFile = open("Data/DataForIndicator_ETH_BB.csv", 'w', newline='')
+    csvFile = open("Data/DataForIndicator_BTC.csv", 'w', newline='')
     candleStickWriter = csv.writer(csvFile, delimiter = ',')
     #date, open, close, high, low, volume, amount | 5m-16h | 30m-336
 
     for candles in response:
         candleStickWriter.writerow(candles)
     csvFile.close()
-
-def BB():
-    splittedCandle = gft(dataOfChart, delimiter=',')
-    candlesLowest = splittedCandle[:,4]
-
-    global buyPrice
-    buyPrice = candlesLowest[-2]
-    upperBB, middleBB, lowerBB = talib.BBANDS(candlesLowest, timeperiod=timePeriodForBB, nbdevup=nbDev, nbdevdn=nbDev, matype=0)
-
-    checkListForMakingOrder(candlesLowest, lowerBB)
-
-def checkListForMakingOrder(candlesLowest, lowerBB):
-    RSI_Ready = RSI()
-    SMA_Ready = SMA()
-
-    # BB RSI UpTrend
-    print(f'{RSI_Ready} | {SMA_Ready}')
-    if SMA_Ready and RSI_Ready:
-            createOrder()
-    else:
-        wait(fiveMin)
-
-def createOrder():
-    # print(coinex.order_market(CryptoToTrade + 'USDT', 'buy', howMuchShouldIBuy))
-    global orderCounter
-    print('new order. #', orderCounter)
-    print(time.ctime(time.time()))
-    orderCounter += 1
-
-    waitForSellPosition()
 
 def RSI():
     splittedCandle = gft(dataOfChart, delimiter=',')
@@ -110,6 +80,28 @@ def SMA():
        currentSMA8 > previousSMA8 and \
        currentSMA13 > previousSMA13:
         return True
+    else:
+        return False
+
+def checkListForMakingOrder():
+    RSI_Ready = RSI()
+    SMA_Ready = SMA()
+
+    # BB RSI UpTrend
+    print(f'{RSI_Ready} | {SMA_Ready}')
+    if SMA_Ready and RSI_Ready:
+            createOrder()
+    else:
+        wait(fiveMin)
+
+def createOrder():
+    # print(coinex.order_market(CryptoToTrade + 'USDT', 'buy', howMuchShouldIBuy))
+    global orderCounter
+    print('new order. #', orderCounter)
+    print(time.ctime(time.time()))
+    orderCounter += 1
+
+    waitForSellPosition()
 
 def checkTheTrend():
     splittedCandle = gft(dataOfChart, delimiter=',')

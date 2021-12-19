@@ -3,15 +3,15 @@ from playsound import playsound
 from numpy import genfromtxt as gft
 from coinex.coinex import CoinEx
 
-CryptoToTrade = 'TRX'
+CryptoToTrade = 'DOGE'
 timeFrame = '5min'  #1min, 1hour, 1day, 1week
 howMuchShouldIBuy = 30  # $
 
 access_id = '9AB450BFC9574FF2A081D257A691D556'
 secret_key = '1343602FFD3EA564E432286088A534EAEC29F8145D1078EC'
 coinex = CoinEx(access_id, secret_key)
-dataOfChart = 'Data/DataForIndicator_ALT_BB.csv'
-saveDataHere = 'Trade_Information/orderHistory_ALT_BB.csv'
+dataOfChart = 'Data/DataForIndicator_ALT.csv'
+saveDataHere = 'Trade_Information/orderHistory_ALT.csv'
 fiveMin = 5 * 60
 timePeriodForBB = 20
 nbDev = .5
@@ -40,7 +40,7 @@ def getDataForAnalyse():
     request = requests.get(f"https://api.coinex.com/v1/market/kline?market={CryptoToTrade+'USDT'}&type={timeFrame}&limit=150")
     response = (request.json())['data']
 
-    csvFile = open("Data/DataForIndicator_ALT_BB.csv", 'w', newline='')
+    csvFile = open("Data/DataForIndicator_ALT.csv", 'w', newline='')
     candleStickWriter = csv.writer(csvFile, delimiter = ',')
     #date, open, close, high, low, volume, amount | 5m-16h | 30m-336
 
@@ -48,26 +48,48 @@ def getDataForAnalyse():
         candleStickWriter.writerow(candles)
     csvFile.close()
 
-def BB():
+def RSI():
     splittedCandle = gft(dataOfChart, delimiter=',')
-    candlesLowest = splittedCandle[:,4]
+    candlesClose = splittedCandle[:,2]
+    RSIs = talib.RSI(candlesClose, timeperiod=14)
+    currentRSI = RSIs[-2]
 
-    global buyPrice
-    buyPrice = candlesLowest[-2]
-    upperBB, middleBB, lowerBB = talib.BBANDS(candlesLowest, timeperiod=timePeriodForBB, nbdevup=nbDev, nbdevdn=nbDev, matype=0)
+    if RSILessThan >= currentRSI >= RSILevelToBuy:
+        return True
+    else:
+        return False
 
-    checkListForMakingOrder(candlesLowest, lowerBB)
+def SMA():
+    splittedCandle = gft(dataOfChart, delimiter=',')
+    candlesClose = splittedCandle[:,2]
 
-def checkListForMakingOrder(candlesLowest, lowerBB):
-    BB_Ready = candlesLowest[-2] < lowerBB[-2]
+    SMAs5 = talib.SMA(candlesClose, timeperiod=5)
+    SMAs8 = talib.SMA(candlesClose, timeperiod=8)
+    SMAs13 = talib.SMA(candlesClose, timeperiod=13)
+
+    currentSMA5 = SMAs5[-2]
+    previousSMA5 = SMAs5[-3]
+
+    currentSMA8 = SMAs8[-2]
+    previousSMA8 = SMAs8[-3]
+
+    currentSMA13 = SMAs13[-2]
+    previousSMA13 = SMAs13[-3]
+
+    if currentSMA5 > previousSMA5 and \
+       currentSMA8 > previousSMA8 and \
+       currentSMA13 > previousSMA13:
+        return True
+    else:
+        return False
+
+def checkListForMakingOrder():
     RSI_Ready = RSI()
-    upTrend_Ready = checkTheTrend() == 'upTrend'
+    SMA_Ready = SMA()
 
     # BB RSI UpTrend
-    print(f'{BB_Ready} | {RSI_Ready} | {upTrend_Ready}')
-    if BB_Ready \
-        and RSI_Ready \
-        and upTrend_Ready:
+    print(f'{RSI_Ready} | {SMA_Ready}')
+    if SMA_Ready and RSI_Ready:
             createOrder()
     else:
         wait(fiveMin)
@@ -80,17 +102,6 @@ def createOrder():
     orderCounter += 1
 
     waitForSellPosition()
-
-def RSI():
-    splittedCandle = gft(dataOfChart, delimiter=',')
-    candlesClose = splittedCandle[:,2]
-    RSIs = talib.RSI(candlesClose, timeperiod=14)
-    currentRSI = RSIs[-2]
-
-    if RSILessThan >= currentRSI >= RSILevelToBuy:
-        return True
-    else:
-        return False
 
 def checkTheTrend():
     splittedCandle = gft(dataOfChart, delimiter=',')
