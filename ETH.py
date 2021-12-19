@@ -18,6 +18,7 @@ nbDev = .5
 RSILevelToBuy = 30
 RSILessThan = 80
 saveProfit = 1
+leastProfit = .03
 trendTimeFrame = 600  # Minute
 whenStopLoss = -0.03
 buyPrice = 0
@@ -129,6 +130,7 @@ def checkListForStopOrder():
 
     if candlesClose[-2] > upperBB[-2] \
         and candlesHighest[-3] > upperBB[-2] \
+        and profit >= leastProfit \
         or profit <= whenStopLoss \
         or profit >= saveProfit:
             closeOrder()
