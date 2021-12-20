@@ -4,8 +4,10 @@ from numpy import genfromtxt as gft
 from coinex.coinex import CoinEx
 
 CryptoToTrade = 'DOGE'
-timeFrame = '5min'  #1min, 1hour, 1day, 1week
+timeFrame = '15min'  #1min, 1hour, 1day, 1week
 howMuchShouldIBuy = 30  # $
+timePeriodForBB = 20
+nbDev = .5
 
 access_id = '9AB450BFC9574FF2A081D257A691D556'
 secret_key = '1343602FFD3EA564E432286088A534EAEC29F8145D1078EC'
@@ -13,18 +15,11 @@ coinex = CoinEx(access_id, secret_key)
 dataOfChart = 'Data/DataForIndicator_ALT.csv'
 saveDataHere = 'Trade_Information/orderHistory_ALT.csv'
 fiveMin = 5 * 60
-timePeriodForBB = 20
-nbDev = .5
-RSILevelToBuy = 30
-RSILessThan = 80
-saveProfit = 1
-leastProfit = .03
-trendTimeFrame = 600  # Minute
-whenStopLoss = -0.03
+saveProfit = 3.3
+whenStopLoss = -1.5
 buyPrice = 0
 sellPrice = 0
 orderCounter = 1
-leverage = 3
 
 def start():
     print(time.ctime(time.time()))
@@ -50,38 +45,6 @@ def getDataForAnalyse():
         candleStickWriter.writerow(candles)
     csvFile.close()
 
-def RSI(candlesClose):
-
-    RSIs = talib.RSI(candlesClose, timeperiod=14)
-    currentRSI = RSIs[-2]
-
-    if RSILessThan >= currentRSI >= RSILevelToBuy:
-        return True
-    else:
-        return False
-
-def SMA(candlesClose):
-
-    SMAs5 = talib.SMA(candlesClose, timeperiod=5)
-    SMAs8 = talib.SMA(candlesClose, timeperiod=8)
-    SMAs13 = talib.SMA(candlesClose, timeperiod=13)
-
-    currentSMA5 = SMAs5[-2]
-    previousSMA5 = SMAs5[-3]
-
-    currentSMA8 = SMAs8[-2]
-    previousSMA8 = SMAs8[-3]
-
-    currentSMA13 = SMAs13[-2]
-    previousSMA13 = SMAs13[-3]
-
-    if currentSMA5 > previousSMA5 and \
-       currentSMA8 > previousSMA8 and \
-       currentSMA13 > previousSMA13:
-        return True
-    else:
-        return False
-
 def checkListForMakingOrder():
     splittedCandle = gft(dataOfChart, delimiter=',')
     candlesClose = splittedCandle[:,2]
@@ -89,14 +52,58 @@ def checkListForMakingOrder():
     global buyPrice
     buyPrice = candlesClose[-2]
 
-    RSI_Ready = RSI(candlesClose)
-    SMA_Ready = SMA(candlesClose)
+    MOM_Ready = MOM(candlesClose)
+    BBPerB_Ready = BBPerB(candlesClose)
+    SMA_Slow_Ready = SMA_Slow(candlesClose)
+    SMA_Fast_Ready = SMA_Fast(candlesClose)
     
-    print(f'{RSI_Ready} | {SMA_Ready}')
-    if SMA_Ready and RSI_Ready:
+    print(f'MOM:{MOM_Ready} | BB:{BBPerB_Ready} | SMA-S:{SMA_Slow_Ready} | SMA-F:{SMA_Fast_Ready}')
+    if MOM_Ready and BBPerB_Ready and SMA_Slow_Ready and SMA_Fast_Ready:
         createOrder()
     else:
         wait(fiveMin)
+
+def SMA_Fast(candlesClose):
+    SMAs5 = talib.SMA(candlesClose, timeperiod=5)
+    SMAs21 = talib.SMA(candlesClose, timeperiod=21)
+            
+    currentSMA5 = SMAs5[-2]
+    currentSMA21 = SMAs21[-2]
+
+    if currentSMA5 > currentSMA21:
+        return True
+    else:
+        return False
+
+def SMA_Slow(candlesClose):
+    SMAs50 = talib.SMA(candlesClose, timeperiod=50)
+    SMAs200 = talib.SMA(candlesClose, timeperiod=200)
+            
+    currentSMA50 = SMAs50[-2]
+    currentSMA200 = SMAs200[-2]
+
+    if currentSMA50 > currentSMA200:
+        return True
+    else:
+        return False
+
+def BBPerB(candlesClose):
+    upper, middle, lower = talib.BBANDS(candlesClose, matype=0)
+    BBperB = middle[-2] + (upper[-2] - middle[-2]) / 2
+
+    if candlesClose[-2] > BBperB:
+        return True
+    else:
+        return False
+
+def MOM(candlesClose):
+    MOMs = talib.MOM(candlesClose, timeperiod=5)
+    currentMOM = MOMs[-2]
+
+    if currentMOM > 0:
+        return True
+    else:
+        return False
 
 def createOrder():
     global orderCounter
@@ -125,12 +132,10 @@ def checkListForStopOrder():
     splittedCandle = gft(dataOfChart, delimiter=',')
     candlesClose = splittedCandle[:,2]
     candlesHighest = splittedCandle[:,3]
-    upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=timePeriodForBB, nbdevup=nbDev, nbdevdn=nbDev, matype=0)
+    upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=timePeriodForBB, nbdeDup=nbDev, nbdevdn=nbDev, matype=0)
     profit = checkProfit(candlesClose[-2])
 
-    if candlesClose[-2] > upperBB[-2] \
-        and candlesHighest[-3] > upperBB[-2] \
-        and profit >= leastProfit \
+    if candlesHighest[-2] > upperBB[-2] \
         or profit <= whenStopLoss \
         or profit >= saveProfit:
             closeOrder()
