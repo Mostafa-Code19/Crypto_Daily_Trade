@@ -3,14 +3,17 @@ from playsound import playsound
 from numpy import genfromtxt as gft
 from coinex.coinex import CoinEx
 from telegram.ext import Updater, CallbackContext, CommandHandler
-from telegram import Update, Bot
-import sys
+from telegram import Update
 
 CryptoToTrade = 'ETH'
 timeFrame = '15min'  #1min, 1hour, 1day, 1week
 howMuchShouldIBuy = 30  # $
 timePeriodForBB = 20
 nbDev = .5
+twoMinute = 2 * 60
+saveProfit = 1.5
+whenStopLoss = -.5
+leastProfit = .1
 
 telegram_token = '5033024072:AAHPU_wGYeArbp-jg3lQ-HKphOGmsoghszE'
 updater = Updater(telegram_token, use_context=True)
@@ -21,12 +24,9 @@ secret_key = '1343602FFD3EA564E432286088A534EAEC29F8145D1078EC'
 coinex = CoinEx(access_id, secret_key)
 dataOfChart = 'Data/DataForIndicator_ETH.csv'
 saveDataHere = 'Trade_Information/orderHistory_ETH.csv'
-fifteenMin = 15 * 60
-saveProfit = 3.3
-whenStopLoss = -1.5
 buyPrice = 0
 sellPrice = 0
-
+currentCandle = -2
 orderCounter = 0
 totalProfits = 0
 totalOrders = []
@@ -79,27 +79,37 @@ def getDataForAnalyse():
 def checkListForMakingOrder(update, context):
     splittedCandle = gft(dataOfChart, delimiter=',')
     candlesClose = splittedCandle[:,2]
+    candlesVolume = splittedCandle[:,5]
 
     MOM_Ready = MOM(candlesClose)
     BBPerB_Ready = BBPerB(candlesClose)
     SMA_Fast_Ready = SMA_Fast(candlesClose)
+    OBV_Ready = OBV(candlesClose, candlesVolume)
     
     # print(f'MOM:{MOM_Ready} | BB:{BBPerB_Ready} | SMA-F:{SMA_Fast_Ready}')
-    print(f'{MOM_Ready} | {BBPerB_Ready} | {SMA_Fast_Ready}')
+    print(f'{MOM_Ready} | {BBPerB_Ready} | {SMA_Fast_Ready} | {OBV_Ready}')
 
-    if MOM_Ready and BBPerB_Ready and SMA_Fast_Ready:
+    if MOM_Ready and BBPerB_Ready and SMA_Fast_Ready and OBV_Ready:
         global buyPrice
-        buyPrice = candlesClose[-2]
+        buyPrice = candlesClose[currentCandle]
         createOrder(update, context)
     else:
-        wait(fifteenMin)
+        wait(twoMinute)
+
+def OBV(candlesClose, candlesVolume):
+    OBVs = talib.OBV(candlesClose, candlesVolume)
+    
+    if OBVs[currentCandle - 1] < OBVs[currentCandle]:
+        return True
+    else:
+        return False
 
 def SMA_Fast(candlesClose):
     SMAs5 = talib.SMA(candlesClose, timeperiod=5)
     SMAs21 = talib.SMA(candlesClose, timeperiod=21)
             
-    currentSMA5 = SMAs5[-2]
-    currentSMA21 = SMAs21[-2]
+    currentSMA5 = SMAs5[currentCandle]
+    currentSMA21 = SMAs21[currentCandle]
 
     if currentSMA5 > currentSMA21:
         return True
@@ -108,16 +118,16 @@ def SMA_Fast(candlesClose):
 
 def BBPerB(candlesClose):
     upper, middle, lower = talib.BBANDS(candlesClose, matype=0)
-    BBperB = middle[-2] + (upper[-2] - middle[-2]) / 2
+    BBperB = middle[currentCandle] + (upper[currentCandle] - middle[currentCandle]) / 2
 
-    if candlesClose[-2] > BBperB:
+    if candlesClose[currentCandle] > BBperB:
         return True
     else:
         return False
 
 def MOM(candlesClose):
     MOMs = talib.MOM(candlesClose, timeperiod=5)
-    currentMOM = MOMs[-2]
+    currentMOM = MOMs[currentCandle]
 
     if currentMOM > 0:
         return True
@@ -145,7 +155,7 @@ def wait(second):
 def waitForSellPosition(update, context):
     while True:
         checkListForStopOrder(update, context)
-        wait(fifteenMin)
+        wait(twoMinute)
 
 def checkListForStopOrder(update, context):
     getDataForAnalyse()
@@ -153,9 +163,10 @@ def checkListForStopOrder(update, context):
     candlesClose = splittedCandle[:,2]
     candlesHighest = splittedCandle[:,3]
     upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=timePeriodForBB, nbdevup=nbDev, nbdevdn=nbDev, matype=0)
-    profit = checkProfit(candlesClose[-2])
+    profit = checkProfit(candlesClose[currentCandle])
 
-    if candlesHighest[-2] > upperBB[-2] \
+    if candlesHighest[currentCandle] > upperBB[currentCandle] \
+        and profit >= leastProfit \
         or profit <= whenStopLoss \
         or profit >= saveProfit:
             closeOrder(update, context)
@@ -169,18 +180,18 @@ def closeOrder(update, context):
     # assest = (wallet[CryptoToTrade])['available']
     getDataForAnalyse()
     splittedCandle = gft(dataOfChart, delimiter=',')
-    candleClose = splittedCandle[:,2][-2]
+    candleClose = splittedCandle[:,2][currentCandle]
     global sellPrice
     sellPrice = candleClose
     profit = float(sellPrice / buyPrice)*100 - 100
 
-    # print(coinex.order_limit(CryptoToTrade + 'USDT', 'sell', assest, sellPrice[-2]))
+    # print(coinex.order_limit(CryptoToTrade + 'USDT', 'sell', assest, sellPrice[currentCandle]))
     # print(f'Profit: {profit}')
     # print('=======================================')
     context.bot.send_message(chat_id=update.effective_chat.id, text=f'order {orderCounter} closed | profit: {profit}')
 
     saveData(profit)
-    start()  # Start New Run
+    start(update, context)  # Start New Run
 
 def saveData(tradeData):
     tradeDataCSV = open(saveDataHere, 'a', newline='')
@@ -193,6 +204,6 @@ def saveData(tradeData):
     totalOrders.append([str(tradeData)[:6], CryptoToTrade, date])
 
     global totalProfits
-    totalProfits += (tradeData)[:6]
+    totalProfits += float(str(tradeData)[:6])
 
 listenToTelegram()
