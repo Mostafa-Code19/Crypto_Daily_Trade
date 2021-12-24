@@ -11,9 +11,9 @@ howMuchShouldIBuy = 30  # $
 timePeriodForBB = 20
 nbDev = .5
 twoMinute = 2 * 60
-saveProfit = 1.5
-whenStopLoss = -.5
-leastProfit = .1
+fiveMinute = 5 * 60
+saveProfit = .5
+leastProfit = .25
 
 telegram_token = '5002478776:AAFcuoK0Qomb57vAJ6SctNrdTW9w-SRvFQE'
 updater = Updater(telegram_token, use_context=True)
@@ -26,7 +26,6 @@ dataOfChart = 'Data/DataForIndicator_BTC.csv'
 saveDataHere = 'Trade_Information/orderHistory_BTC.csv'
 buyPrice = 0
 sellPrice = 0
-currentCandle = -2
 orderCounter = 0
 totalProfits = 0
 totalOrders = []
@@ -47,7 +46,7 @@ def returnTotalOrders(update: Update, context: CallbackContext):
     context.bot.send_message(chat_id=update.effective_chat.id, text=f'Total Orders:{orderCounter} \n{totalOrders}')
 
 def returnTotalProfits(update: Update, context: CallbackContext):
-    context.bot.send_message(chat_id=update.effective_chat.id, text=f'Total Profits:\n{totalProfits}%')
+    context.bot.send_message(chat_id=update.effective_chat.id, text=f'Total Profits:\n{str(totalProfits)[:4]}%')
 
 def start(update: Update, context: CallbackContext):
     print(f'Analyze At: {time.ctime(time.time())}')
@@ -62,6 +61,7 @@ def start(update: Update, context: CallbackContext):
             print(time.ctime(time.time()))
             context.bot.send_message(chat_id=update.effective_chat.id, text=f'Error!!!! # | time: {time.ctime(time.time())} | cause: {e}')
             playsound('Alarms/Rocket.wav')
+            wait(fiveMinute)
             continue
         
 def getDataForAnalyse():
@@ -91,15 +91,17 @@ def checkListForMakingOrder(update, context):
 
     if MOM_Ready and BBPerB_Ready and SMA_Fast_Ready and OBV_Ready:
         global buyPrice
-        buyPrice = candlesClose[currentCandle]
+        buyPrice = candlesClose[-1]
         createOrder(update, context)
     else:
         wait(twoMinute)
 
 def OBV(candlesClose, candlesVolume):
     OBVs = talib.OBV(candlesClose, candlesVolume)
+
+    print(candlesClose[-1])
     
-    if OBVs[currentCandle - 1] < OBVs[currentCandle]:
+    if OBVs[-2] < OBVs[-1]:
         return True
     else:
         return False
@@ -108,8 +110,8 @@ def SMA_Fast(candlesClose):
     SMAs5 = talib.SMA(candlesClose, timeperiod=5)
     SMAs21 = talib.SMA(candlesClose, timeperiod=21)
             
-    currentSMA5 = SMAs5[currentCandle]
-    currentSMA21 = SMAs21[currentCandle]
+    currentSMA5 = SMAs5[-1]
+    currentSMA21 = SMAs21[-1]
 
     if currentSMA5 > currentSMA21:
         return True
@@ -118,16 +120,16 @@ def SMA_Fast(candlesClose):
 
 def BBPerB(candlesClose):
     upper, middle, lower = talib.BBANDS(candlesClose, matype=0)
-    BBperB = middle[currentCandle] + (upper[currentCandle] - middle[currentCandle]) / 2
+    BBperB = middle[-1] + (upper[-1] - middle[-1]) / 2
 
-    if candlesClose[currentCandle] > BBperB:
+    if candlesClose[-1] > BBperB:
         return True
     else:
         return False
 
 def MOM(candlesClose):
     MOMs = talib.MOM(candlesClose, timeperiod=5)
-    currentMOM = MOMs[currentCandle]
+    currentMOM = MOMs[-1]
 
     if currentMOM > 0:
         return True
@@ -163,11 +165,10 @@ def checkListForStopOrder(update, context):
     candlesClose = splittedCandle[:,2]
     candlesHighest = splittedCandle[:,3]
     upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=timePeriodForBB, nbdevup=nbDev, nbdevdn=nbDev, matype=0)
-    profit = checkProfit(candlesClose[currentCandle])
+    profit = checkProfit(candlesClose[-1])
 
-    if candlesHighest[currentCandle] > upperBB[currentCandle] \
+    if candlesHighest[-1] > upperBB[-1] \
         and profit >= leastProfit \
-        or profit <= whenStopLoss \
         or profit >= saveProfit:
             closeOrder(update, context)
 
@@ -180,17 +181,18 @@ def closeOrder(update, context):
     # assest = (wallet[CryptoToTrade])['available']
     getDataForAnalyse()
     splittedCandle = gft(dataOfChart, delimiter=',')
-    candleClose = splittedCandle[:,2][currentCandle]
+    candleClose = splittedCandle[:,2][-1]
     global sellPrice
     sellPrice = candleClose
     profit = float(sellPrice / buyPrice)*100 - 100
 
-    # print(coinex.order_limit(CryptoToTrade + 'USDT', 'sell', assest, sellPrice[currentCandle]))
-    # print(f'Profit: {profit}')
+    # print(coinex.order_limit(CryptoToTrade + 'USDT', 'sell', assest, sellPrice[-1]))
+    # print(f'Profit: {str(profit)[:4]}')
     # print('=======================================')
-    context.bot.send_message(chat_id=update.effective_chat.id, text=f'order {orderCounter} closed | profit: {profit}')
+    context.bot.send_message(chat_id=update.effective_chat.id, text=f'-------------------------------------------\nOrder {orderCounter} closed |\nprofit: {str(profit)[:4]}')
 
     saveData(profit)
+    wait(fiveMinute)
     start(update, context)  # Start New Run
 
 def saveData(tradeData):
