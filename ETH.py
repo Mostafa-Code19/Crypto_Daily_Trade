@@ -4,6 +4,10 @@ from numpy import genfromtxt as gft
 from coinex.coinex import CoinEx
 from telegram.ext import Updater, CallbackContext, CommandHandler
 from telegram import Update
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 CryptoToTrade = 'ETH'
 timeFrame = '15min'  #1min, 1hour, 1day, 1week
@@ -15,12 +19,12 @@ fiveMinute = 5 * 60
 saveProfit = .5
 leastProfit = .25
 
-telegram_token = '5033024072:AAHPU_wGYeArbp-jg3lQ-HKphOGmsoghszE'
+telegram_token = os.getenv('TELEGRAM_KEY_ETH')
 updater = Updater(telegram_token, use_context=True)
 dispatcher = updater.dispatcher
 
-access_id = '9AB450BFC9574FF2A081D257A691D556'
-secret_key = '1343602FFD3EA564E432286088A534EAEC29F8145D1078EC'
+access_id = os.getenv('COINEX_ACCESS_ID')
+secret_key = os.getenv('COINEX_SECRET_KEY')
 coinex = CoinEx(access_id, secret_key)
 dataOfChart = 'Data/DataForIndicator_ETH.csv'
 saveDataHere = 'Trade_Information/orderHistory_ETH.csv'
