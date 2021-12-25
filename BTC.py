@@ -167,7 +167,7 @@ def checkListForStopOrder(update, context):
     candlesClose = splittedCandle[:,2]
     candlesHighest = splittedCandle[:,3]
     upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=timePeriodForBB, nbdevup=nbDev, nbdevdn=nbDev, matype=0)
-    profit = checkProfit(candlesClose[-1])
+    profit = checkProfit(candlesHighest[-1])
 
     if candlesHighest[-1] > upperBB[-1] \
         and profit >= leastProfit \
