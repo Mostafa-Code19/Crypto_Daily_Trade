@@ -53,8 +53,8 @@ def returnTotalProfits(update: Update, context: CallbackContext):
     context.bot.send_message(chat_id=update.effective_chat.id, text=f'Total Profits:\n{str(totalProfits)[:4]}%')
 
 def start(update: Update, context: CallbackContext):
-    print(f'Analyze At: {time.ctime(time.time())}')
-    context.bot.send_message(chat_id=update.effective_chat.id, text=f'Analyze At: {time.ctime(time.time())} | {CryptoToTrade}')
+    context.bot.send_message(chat_id=update.effective_chat.id, text=f'---------------------------------------------------------')
+    print('---------------------------------------------------------')
 
     while True:
         try:
@@ -102,8 +102,6 @@ def checkListForMakingOrder(update, context):
 
 def OBV(candlesClose, candlesVolume):
     OBVs = talib.OBV(candlesClose, candlesVolume)
-
-    print(candlesClose[-1])
     
     if OBVs[-2] < OBVs[-1]:
         return True
@@ -146,7 +144,7 @@ def createOrder(update, context):
     # print('new order. #', orderCounter)
     orderCounter += 1
 
-    context.bot.send_message(chat_id=update.effective_chat.id, text=f'new order | #{orderCounter} | Time: {time.ctime(time.time())}')
+    context.bot.send_message(chat_id=update.effective_chat.id, text=f'#{orderCounter} | new order')
 
     waitForSellPosition(update, context)
 
@@ -193,7 +191,7 @@ def closeOrder(update, context):
     # print(coinex.order_limit(CryptoToTrade + 'USDT', 'sell', assest, sellPrice[-1]))
     # print(f'Profit: {str(profit)[:4]}')
     # print('=======================================')
-    context.bot.send_message(chat_id=update.effective_chat.id, text=f'-------------------------------------------\nOrder {orderCounter} closed |\nprofit: {str(profit)[:4]}')
+    context.bot.send_message(chat_id=update.effective_chat.id, text=f'{orderCounter} closed |\nprofit: {str(profit)[:4]}')
 
     saveData(profit)
     wait(fiveMinute)
@@ -211,5 +209,6 @@ def saveData(tradeData):
 
     global totalProfits
     totalProfits += float(str(tradeData)[:6])
+
 
 listenToTelegram()
