@@ -2,10 +2,9 @@ import requests, time, talib, csv
 from playsound import playsound
 from numpy import genfromtxt as gft
 from coinex.coinex import CoinEx
-from telegram.ext import Updater, CallbackContext, CommandHandler
-from telegram import Update
-import os
+import os, time
 from dotenv import load_dotenv
+from prepetual_api.prepApi import CoinexPerpetualApi
 
 load_dotenv()
 
@@ -19,13 +18,10 @@ fiveMinute = 5 * 60
 saveProfit = .5
 leastProfit = .25
 
-telegram_token = os.getenv('TELEGRAM_KEY_ETH')
-updater = Updater(telegram_token, use_context=True)
-dispatcher = updater.dispatcher
-
 access_id = os.getenv('COINEX_ACCESS_ID')
 secret_key = os.getenv('COINEX_SECRET_KEY')
 coinex = CoinEx(access_id, secret_key)
+coinexPerpetual = CoinexPerpetualApi(access_id, secret_key)
 dataOfChart = 'Data/DataForIndicator_ETH.csv'
 saveDataHere = 'Trade_Information/orderHistory_ETH.csv'
 buyPrice = 0
@@ -33,30 +29,10 @@ sellPrice = 0
 orderCounter = 0
 totalProfits = 0
 totalOrders = []
+startNew = True
 
-def listenToTelegram():
-    start_handler = CommandHandler('start', start, run_async=True)
-    dispatcher.add_handler(start_handler)
-
-    totalOrders_handler = CommandHandler('total_orders', returnTotalOrders, run_async=True)
-    dispatcher.add_handler(totalOrders_handler)
-
-    totalProfit_handler = CommandHandler('total_profits', returnTotalProfits, run_async=True)
-    dispatcher.add_handler(totalProfit_handler)
-
-    updater.start_polling()
-
-def returnTotalOrders(update: Update, context: CallbackContext):
-    context.bot.send_message(chat_id=update.effective_chat.id, text=f'Total Orders:{orderCounter} \n{totalOrders}')
-
-def returnTotalProfits(update: Update, context: CallbackContext):
-    context.bot.send_message(chat_id=update.effective_chat.id, text=f'Total Profits:\n{str(totalProfits)[:4]}%')
-
-def start(update: Update, context: CallbackContext):
-    context.bot.send_message(chat_id=update.effective_chat.id, text=f'---------------------------------------------------------')
-    print('---------------------------------------------------------')
-
-    while True:
+def run(update, context):
+    while startNew:
         try:
             getDataForAnalyse()
             checkListForMakingOrder(update, context)
@@ -140,8 +116,21 @@ def MOM(candlesClose):
 
 def createOrder(update, context):
     global orderCounter
-    # print(coinex.order_market(CryptoToTrade + 'USDT', 'buy', howMuchShouldIBuy))
     # print('new order. #', orderCounter)
+
+    # side 1 = sell, 2 = buy | effect_type 1 = always valid 2 = immediately or cancel 3 = fill or kill
+    # option 1 = place maker orders only deafult 0
+
+    print(
+        coinexPerpetual.put_limit_order(
+            CryptoToTrade + 'USDT',
+            2,  # side:buy
+            howMuchShouldIBuy
+        )
+    )
+
+    playsound('Alarms/Profit.mp3')
+
     orderCounter += 1
 
     context.bot.send_message(chat_id=update.effective_chat.id, text=f'#{orderCounter} | new order')
@@ -179,8 +168,6 @@ def checkProfit(sellPrice):
     return profit
 
 def closeOrder(update, context):
-    # wallet = coinex.balance_info()
-    # assest = (wallet[CryptoToTrade])['available']
     getDataForAnalyse()
     splittedCandle = gft(dataOfChart, delimiter=',')
     candleClose = splittedCandle[:,2][-1]
@@ -188,14 +175,24 @@ def closeOrder(update, context):
     sellPrice = candleClose
     profit = float(sellPrice / buyPrice)*100 - 100
 
-    # print(coinex.order_limit(CryptoToTrade + 'USDT', 'sell', assest, sellPrice[-1]))
-    # print(f'Profit: {str(profit)[:4]}')
-    # print('=======================================')
+    account = coinexPerpetual.query_account()
+    assest_ETH = account['data']['ETH']['available']
+
+    print(
+        coinexPerpetual.put_limit_order(
+            CryptoToTrade + 'USDT',
+            1,  # side:sell
+            assest_ETH  # everything
+        )
+    )
+
     context.bot.send_message(chat_id=update.effective_chat.id, text=f'{orderCounter} closed |\nprofit: {str(profit)[:4]}')
 
     saveData(profit)
-    wait(fiveMinute)
-    start(update, context)  # Start New Run
+
+    playsound('Alarms/Profit.mp3')
+    wait(99999999999999999999)
+    # run(update, context)  # Start New Run
 
 def saveData(tradeData):
     tradeDataCSV = open(saveDataHere, 'a', newline='')
@@ -209,6 +206,3 @@ def saveData(tradeData):
 
     global totalProfits
     totalProfits += float(str(tradeData)[:6])
-
-
-listenToTelegram()
