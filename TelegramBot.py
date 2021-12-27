@@ -54,5 +54,3 @@ def iAmOk(update: Update, context: CallbackContext):
 
 def status(update: Update, context: CallbackContext):
     context.bot.send_message(chat_id=update.effective_chat.id, text=crypto.startNew)
-
-listenToTelegram()

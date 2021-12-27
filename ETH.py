@@ -10,7 +10,7 @@ load_dotenv()
 
 CryptoToTrade = 'ETH'
 timeFrame = '15min'  #1min, 1hour, 1day, 1week
-howMuchShouldIBuy = 30  # $
+howMuchShouldIBuy = 0.0065  # ETH
 timePeriodForBB = 20
 nbDev = .5
 twoMinute = 2 * 60
@@ -122,7 +122,7 @@ def createOrder(update, context):
     # option 1 = place maker orders only deafult 0
 
     print(
-        coinexPerpetual.put_limit_order(
+        coinexPerpetual.put_market_order(
             CryptoToTrade + 'USDT',
             2,  # side:buy
             howMuchShouldIBuy
@@ -175,14 +175,13 @@ def closeOrder(update, context):
     sellPrice = candleClose
     profit = float(sellPrice / buyPrice)*100 - 100
 
-    account = coinexPerpetual.query_account()
-    assest_ETH = account['data']['ETH']['available']
+    # account = coinexPerpetual.query_account()
+    # assest_ETH = account['data']['ETH']['available']
 
     print(
-        coinexPerpetual.put_limit_order(
+        coinexPerpetual.close_market(
             CryptoToTrade + 'USDT',
-            1,  # side:sell
-            assest_ETH  # everything
+            0  # Position Id
         )
     )
 
