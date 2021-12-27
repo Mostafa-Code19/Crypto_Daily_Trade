@@ -8,28 +8,28 @@ from prepetual_api.prepApi import CoinexPerpetualApi
 
 load_dotenv()
 
-CryptoToTrade = 'ETH'
-timeFrame = '15min'  #1min, 1hour, 1day, 1week
-howMuchShouldIBuy = 0.0065  # ETH
+CryptoToTrade = 'CRV'
+timeFrame = '1hour'  #1min, 1hour, 1day, 1week
+howMuchShouldIBuy = 30  # $
 timePeriodForBB = 20
-nbDev = .5
-twoMinute = 2 * 60
+nbDev = 1
 fiveMinute = 5 * 60
-saveProfit = .5
-leastProfit = .25
+saveProfit = 2
+leastProfit = 1
 
 access_id = os.getenv('COINEX_ACCESS_ID')
 secret_key = os.getenv('COINEX_SECRET_KEY')
 coinex = CoinEx(access_id, secret_key)
 coinexPerpetual = CoinexPerpetualApi(access_id, secret_key)
-dataOfChart = 'Data/DataForIndicator_ETH.csv'
-saveDataHere = 'Trade_Information/orderHistory_ETH.csv'
+dataOfChart = 'Data/DataForIndicator.csv'
+saveDataHere = 'Trade_Information/orderHistory.csv'
 buyPrice = 0
 sellPrice = 0
 orderCounter = 0
 totalProfits = 0
 totalOrders = []
 startNew = True
+currentProfitFromOrder = 0
 
 def run(update, context):
     while startNew:
@@ -43,12 +43,13 @@ def run(update, context):
             playsound('Alarms/Rocket.wav')
             wait(fiveMinute)
             continue
+    waitForNextRun(update, context)
         
 def getDataForAnalyse():
     request = requests.get(f"https://api.coinex.com/v1/market/kline?market={CryptoToTrade+'USDT'}&type={timeFrame}&limit=150")
     response = (request.json())['data']
 
-    csvFile = open("Data/DataForIndicator_ETH.csv", 'w', newline='')
+    csvFile = open("Data/DataForIndicator.csv", 'w', newline='')
     candleStickWriter = csv.writer(csvFile, delimiter = ',')
     #date, open, close, high, low, volume, amount | 5m-16h | 30m-336
 
@@ -72,9 +73,9 @@ def checkListForMakingOrder(update, context):
     if MOM_Ready and BBPerB_Ready and SMA_Fast_Ready and OBV_Ready:
         global buyPrice
         buyPrice = candlesClose[-1]
-        createOrder(update, context)
+        createOrder(buyPrice, update, context)
     else:
-        wait(twoMinute)
+        wait(fiveMinute)
 
 def OBV(candlesClose, candlesVolume):
     OBVs = talib.OBV(candlesClose, candlesVolume)
@@ -114,7 +115,7 @@ def MOM(candlesClose):
     else:
         return False
 
-def createOrder(update, context):
+def createOrder(buyPrice, update, context):
     global orderCounter
     # print('new order. #', orderCounter)
 
@@ -125,7 +126,7 @@ def createOrder(update, context):
         coinexPerpetual.put_market_order(
             CryptoToTrade + 'USDT',
             2,  # side:buy
-            howMuchShouldIBuy
+            howMuchShouldIBuy // buyPrice  # convert to amount of crypto to buy
         )
     )
 
@@ -148,7 +149,7 @@ def wait(second):
 def waitForSellPosition(update, context):
     while True:
         checkListForStopOrder(update, context)
-        wait(twoMinute)
+        wait(fiveMinute)
 
 def checkListForStopOrder(update, context):
     getDataForAnalyse()
@@ -164,7 +165,10 @@ def checkListForStopOrder(update, context):
             closeOrder(update, context)
 
 def checkProfit(sellPrice):
+    global currentProfitFromOrder
+
     profit = float(sellPrice / buyPrice)*100 - 100
+    currentProfitFromOrder = profit
     return profit
 
 def closeOrder(update, context):
@@ -173,10 +177,7 @@ def closeOrder(update, context):
     candleClose = splittedCandle[:,2][-1]
     global sellPrice
     sellPrice = candleClose
-    profit = float(sellPrice / buyPrice)*100 - 100
-
-    # account = coinexPerpetual.query_account()
-    # assest_ETH = account['data']['ETH']['available']
+    profit = checkProfit()
 
     print(
         coinexPerpetual.close_market(
@@ -188,10 +189,11 @@ def closeOrder(update, context):
     context.bot.send_message(chat_id=update.effective_chat.id, text=f'{orderCounter} closed |\nprofit: {str(profit)[:4]}')
 
     saveData(profit)
+    global currentProfitFromOrder
+    currentProfitFromOrder = 0
 
     playsound('Alarms/Profit.mp3')
-    wait(99999999999999999999)
-    # run(update, context)  # Start New Run
+    run(update, context)  # Start New Run
 
 def saveData(tradeData):
     tradeDataCSV = open(saveDataHere, 'a', newline='')
@@ -205,3 +207,9 @@ def saveData(tradeData):
 
     global totalProfits
     totalProfits += float(str(tradeData)[:6])
+
+def waitForNextRun(update, context):
+    print('Not Allowed Start New')
+    while not startNew:
+        wait(fiveMinute)
+    run(update, context)

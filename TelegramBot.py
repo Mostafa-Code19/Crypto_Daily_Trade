@@ -2,9 +2,9 @@ from telegram.ext import Updater, CallbackContext, CommandHandler
 from telegram import Update
 import os
 
-import ETH as crypto
+import CryptoTrader as crypto
 
-telegram_token = os.getenv('TELEGRAM_KEY_ETH')
+telegram_token = os.getenv('TELEGRAM_KEY')
 updater = Updater(telegram_token, use_context=True)
 dispatcher = updater.dispatcher
 
@@ -24,11 +24,14 @@ def listenToTelegram():
     stopNew_handler = CommandHandler('stop_new', stopNew, run_async=True)
     dispatcher.add_handler(stopNew_handler)
 
-    startNew_handler = CommandHandler('start_new', stopNew, run_async=True)
+    startNew_handler = CommandHandler('start_new', startNew, run_async=True)
     dispatcher.add_handler(startNew_handler)
 
     areYouOk_handler = CommandHandler('are_you_ok', iAmOk, run_async=True)
     dispatcher.add_handler(areYouOk_handler)
+
+    currentProfit_handler = CommandHandler('current_profit', currentProfit, run_async=True)
+    dispatcher.add_handler(currentProfit_handler)
 
     updater.start_polling()
 
@@ -54,3 +57,9 @@ def iAmOk(update: Update, context: CallbackContext):
 
 def status(update: Update, context: CallbackContext):
     context.bot.send_message(chat_id=update.effective_chat.id, text=crypto.startNew)
+
+def currentProfit(update: Update, context: CallbackContext):
+    if crypto.currentProfitFromOrder:
+        context.bot.send_message(chat_id=update.effective_chat.id, text=f'Current Profit: {crypto.currentProfit}')
+    else:
+        context.bot.send_message(chat_id=update.effective_chat.id, text=f'There is not order available')
