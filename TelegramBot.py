@@ -33,6 +33,9 @@ def listenToTelegram():
     currentProfit_handler = CommandHandler('current_profit', currentProfit, run_async=True)
     dispatcher.add_handler(currentProfit_handler)
 
+    whenBought_handler = CommandHandler('when_bought', whenBought, run_async=True)
+    dispatcher.add_handler(whenBought_handler)
+
     updater.start_polling()
 
 def returnTotalOrders(update: Update, context: CallbackContext):
@@ -60,6 +63,12 @@ def status(update: Update, context: CallbackContext):
 
 def currentProfit(update: Update, context: CallbackContext):
     if crypto.currentProfitFromOrder:
-        context.bot.send_message(chat_id=update.effective_chat.id, text=f'Current Profit: {crypto.currentProfit}')
+        context.bot.send_message(chat_id=update.effective_chat.id, text=f'Current Profit: {str(crypto.currentProfitFromOrder)[:4]}')
+    else:
+        context.bot.send_message(chat_id=update.effective_chat.id, text=f'There is not order available')
+
+def whenBought(update: Update, context: CallbackContext):
+    if crypto.buyPrice:
+        context.bot.send_message(chat_id=update.effective_chat.id, text=f'{crypto.CryptoToTrade}:{crypto.buyPrice}')
     else:
         context.bot.send_message(chat_id=update.effective_chat.id, text=f'There is not order available')

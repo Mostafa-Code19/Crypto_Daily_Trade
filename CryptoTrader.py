@@ -9,7 +9,7 @@ from prepetual_api.prepApi import CoinexPerpetualApi
 load_dotenv()
 
 CryptoToTrade = 'CRV'
-timeFrame = '1hour'  #1min, 1hour, 1day, 1week
+timeFrame = '15min'  #1min, 1hour, 1day, 1week
 howMuchShouldIBuy = 30  # $
 timePeriodForBB = 20
 nbDev = 1
@@ -62,15 +62,17 @@ def checkListForMakingOrder(update, context):
     candlesClose = splittedCandle[:,2]
     candlesVolume = splittedCandle[:,5]
 
-    MOM_Ready = MOM(candlesClose)
-    BBPerB_Ready = BBPerB(candlesClose)
-    SMA_Fast_Ready = SMA_Fast(candlesClose)
+    # MOM_Ready = MOM(candlesClose)
+    # BBPerB_Ready = BBPerB(candlesClose)
+    # SMA_Fast_Ready = SMA_Fast(candlesClose)
     OBV_Ready = OBV(candlesClose, candlesVolume)
     
     # print(f'MOM:{MOM_Ready} | BB:{BBPerB_Ready} | SMA-F:{SMA_Fast_Ready}')
-    print(f'{MOM_Ready} | {BBPerB_Ready} | {SMA_Fast_Ready} | {OBV_Ready}')
+    # print(f'{MOM_Ready} | {BBPerB_Ready} | {SMA_Fast_Ready} | {OBV_Ready}')
 
-    if MOM_Ready and BBPerB_Ready and SMA_Fast_Ready and OBV_Ready:
+    # if MOM_Ready and BBPerB_Ready and SMA_Fast_Ready and OBV_Ready:
+    print(OBV_Ready)
+    if OBV_Ready:
         global buyPrice
         buyPrice = candlesClose[-1]
         createOrder(buyPrice, update, context)
@@ -79,61 +81,61 @@ def checkListForMakingOrder(update, context):
 
 def OBV(candlesClose, candlesVolume):
     OBVs = talib.OBV(candlesClose, candlesVolume)
-    
+
     if OBVs[-2] < OBVs[-1]:
         return True
     else:
         return False
 
-def SMA_Fast(candlesClose):
-    SMAs5 = talib.SMA(candlesClose, timeperiod=5)
-    SMAs21 = talib.SMA(candlesClose, timeperiod=21)
+# def SMA_Fast(candlesClose):
+#     SMAs5 = talib.SMA(candlesClose, timeperiod=5)
+#     SMAs21 = talib.SMA(candlesClose, timeperiod=21)
             
-    currentSMA5 = SMAs5[-1]
-    currentSMA21 = SMAs21[-1]
+#     currentSMA5 = SMAs5[-1]
+#     currentSMA21 = SMAs21[-1]
 
-    if currentSMA5 > currentSMA21:
-        return True
-    else:
-        return False
+#     if currentSMA5 > currentSMA21:
+#         return True
+#     else:
+#         return False
 
-def BBPerB(candlesClose):
-    upper, middle, lower = talib.BBANDS(candlesClose, matype=0)
-    BBperB = middle[-1] + (upper[-1] - middle[-1]) / 2
+# def BBPerB(candlesClose):
+#     upper, middle, lower = talib.BBANDS(candlesClose, matype=0)
+#     BBperB = middle[-1] + (upper[-1] - middle[-1]) / 2
 
-    if candlesClose[-1] > BBperB:
-        return True
-    else:
-        return False
+#     if candlesClose[-1] > BBperB:
+#         return True
+#     else:
+#         return False
 
-def MOM(candlesClose):
-    MOMs = talib.MOM(candlesClose, timeperiod=5)
-    currentMOM = MOMs[-1]
+# def MOM(candlesClose):
+#     MOMs = talib.MOM(candlesClose, timeperiod=5)
+#     currentMOM = MOMs[-1]
 
-    if currentMOM > 0:
-        return True
-    else:
-        return False
+#     if currentMOM > 0:
+#         return True
+#     else:
+#         return False
 
 def createOrder(buyPrice, update, context):
     global orderCounter
-    # print('new order. #', orderCounter)
 
     # side 1 = sell, 2 = buy | effect_type 1 = always valid 2 = immediately or cancel 3 = fill or kill
     # option 1 = place maker orders only deafult 0
 
-    print(
-        coinexPerpetual.put_market_order(
-            CryptoToTrade + 'USDT',
-            2,  # side:buy
-            howMuchShouldIBuy // buyPrice  # convert to amount of crypto to buy
-        )
-    )
+    # print(
+    #     coinexPerpetual.put_market_order(
+    #         CryptoToTrade + 'USDT',
+    #         2,  # side:buy
+    #         howMuchShouldIBuy // buyPrice  # convert to amount of crypto to buy
+    #     )
+    # )
 
-    playsound('Alarms/Profit.mp3')
+    # playsound('Alarms/Profit.mp3')
 
     orderCounter += 1
 
+    print(f'#{orderCounter} | new order')
     context.bot.send_message(chat_id=update.effective_chat.id, text=f'#{orderCounter} | new order')
 
     waitForSellPosition(update, context)
@@ -172,27 +174,30 @@ def checkProfit(sellPrice):
     return profit
 
 def closeOrder(update, context):
+    global sellPrice, buyPrice, currentProfitFromOrder
     getDataForAnalyse()
     splittedCandle = gft(dataOfChart, delimiter=',')
     candleClose = splittedCandle[:,2][-1]
-    global sellPrice
     sellPrice = candleClose
     profit = checkProfit()
+    
 
-    print(
-        coinexPerpetual.close_market(
-            CryptoToTrade + 'USDT',
-            0  # Position Id
-        )
-    )
+    # print(
+    #     coinexPerpetual.close_market(
+    #         CryptoToTrade + 'USDT',
+    #         0  # Position Id
+    #     )
+    # )
 
+    print(f'{orderCounter} closed |\nprofit: {str(profit)[:4]}')
     context.bot.send_message(chat_id=update.effective_chat.id, text=f'{orderCounter} closed |\nprofit: {str(profit)[:4]}')
 
     saveData(profit)
-    global currentProfitFromOrder
-    currentProfitFromOrder = 0
 
-    playsound('Alarms/Profit.mp3')
+    currentProfitFromOrder = 0
+    buyPrice = 0
+
+    # playsound('Alarms/Profit.mp3')
     run(update, context)  # Start New Run
 
 def saveData(tradeData):
