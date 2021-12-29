@@ -63,7 +63,7 @@ def status(update: Update, context: CallbackContext):
 
 def currentProfit(update: Update, context: CallbackContext):
     if crypto.currentProfitFromOrder:
-        context.bot.send_message(chat_id=update.effective_chat.id, text=f'Current Profit: {str(crypto.currentProfitFromOrder)[:4]}')
+        context.bot.send_message(chat_id=update.effective_chat.id, text=f'Current Profit: {str(crypto.currentProfitFromOrder)[:5]}')
     else:
         context.bot.send_message(chat_id=update.effective_chat.id, text=f'There is not order available')
 

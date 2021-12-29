@@ -39,7 +39,12 @@ def run(update, context):
         except Exception as e:
             print('Error...', e)
             print(time.ctime(time.time()))
-            context.bot.send_message(chat_id=update.effective_chat.id, text=f'Error!!!! # | time: {time.ctime(time.time())} | cause: {e}')
+
+            try:
+                context.bot.send_message(chat_id=update.effective_chat.id, text=f'Error!!!! # | time: {time.ctime(time.time())} | cause: {e}')
+            except:
+                print('Connection to Telegram Lost!')
+
             playsound('Alarms/Rocket.wav')
             wait(fiveMinute)
             continue
@@ -136,7 +141,11 @@ def createOrder(buyPrice, update, context):
     orderCounter += 1
 
     print(f'#{orderCounter} | new order')
-    context.bot.send_message(chat_id=update.effective_chat.id, text=f'#{orderCounter} | new order')
+    
+    try:
+        context.bot.send_message(chat_id=update.effective_chat.id, text=f'#{orderCounter} | new order')
+    except:
+        print('Connection to Telegram Lost!')
 
     waitForSellPosition(update, context)
 
@@ -161,7 +170,7 @@ def checkListForStopOrder(update, context):
     upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=timePeriodForBB, nbdevup=nbDev, nbdevdn=nbDev, matype=0)
     profit = checkProfit(candlesHighest[-1])
 
-    if candlesHighest[-1] > upperBB[-1] \
+    if candlesHighest[-1] > middleBB[-1] \
         and profit >= leastProfit \
         or profit >= saveProfit:
             closeOrder(update, context)
@@ -177,9 +186,9 @@ def closeOrder(update, context):
     global sellPrice, buyPrice, currentProfitFromOrder
     getDataForAnalyse()
     splittedCandle = gft(dataOfChart, delimiter=',')
-    candleClose = splittedCandle[:,2][-1]
-    sellPrice = candleClose
-    profit = checkProfit()
+    candlesHighest = splittedCandle[:,3][-1]
+    sellPrice = candlesHighest
+    profit = checkProfit(sellPrice)
     
 
     # print(
@@ -190,7 +199,11 @@ def closeOrder(update, context):
     # )
 
     print(f'{orderCounter} closed |\nprofit: {str(profit)[:4]}')
-    context.bot.send_message(chat_id=update.effective_chat.id, text=f'{orderCounter} closed |\nprofit: {str(profit)[:4]}')
+
+    try:
+        context.bot.send_message(chat_id=update.effective_chat.id, text=f'{orderCounter} closed |\nprofit: {str(profit)[:4]}')
+    except:
+        print('Connection to Telegram Lost!')
 
     saveData(profit)
 
