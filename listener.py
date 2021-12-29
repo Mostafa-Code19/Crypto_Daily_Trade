@@ -1,8 +1,6 @@
 from telegram.ext import Updater, CallbackContext, CommandHandler
 from telegram import Update
-import os
-
-import CryptoTrader as crypto
+import os, app
 
 telegram_token = os.getenv('TELEGRAM_KEY')
 updater = Updater(telegram_token, use_context=True)
@@ -39,36 +37,39 @@ def listenToTelegram():
     updater.start_polling()
 
 def returnTotalOrders(update: Update, context: CallbackContext):
-    context.bot.send_message(chat_id=update.effective_chat.id, text=f'Total Orders:{crypto.orderCounter} \n{crypto.totalOrders}')
+    context.bot.send_message(chat_id=update.effective_chat.id, text=f'Total Orders:{app.orderCounter} \n{app.totalOrders}')
 
 def returnTotalProfits(update: Update, context: CallbackContext):
-    context.bot.send_message(chat_id=update.effective_chat.id, text=f'Total Profits:\n{str(crypto.totalProfits)[:4]}%')
+    context.bot.send_message(chat_id=update.effective_chat.id, text=f'Total Profits:\n{str(app.totalProfits)[:4]}%')
 
 def start(update: Update, context: CallbackContext):
     context.bot.send_message(chat_id=update.effective_chat.id, text=f'---------------------------------------------------------')
     print('---------------------------------------------------------')
-    crypto.run(update, context)
+    app.run(update, context)
 
 def stopNew(update: Update, context: CallbackContext):
-    crypto.startNew = False
+    app.startNew = False
 
 def startNew(update: Update, context: CallbackContext):
-    crypto.startNew = True
+    app.startNew = True
 
 def iAmOk(update: Update, context: CallbackContext):
     context.bot.send_message(chat_id=update.effective_chat.id, text='I Am Ok Alexander, Thanks For Asking. 💚💻')
 
 def status(update: Update, context: CallbackContext):
-    context.bot.send_message(chat_id=update.effective_chat.id, text=crypto.startNew)
+    context.bot.send_message(chat_id=update.effective_chat.id, text=app.run)
 
 def currentProfit(update: Update, context: CallbackContext):
-    if crypto.currentProfitFromOrder:
-        context.bot.send_message(chat_id=update.effective_chat.id, text=f'Current Profit: {str(crypto.currentProfitFromOrder)[:5]}')
+    if app.currentProfitFromOrder:
+        context.bot.send_message(chat_id=update.effective_chat.id, text=f'Current Profit: {str(app.currentProfitFromOrder)[:5]}')
     else:
         context.bot.send_message(chat_id=update.effective_chat.id, text=f'There is not order available')
 
 def whenBought(update: Update, context: CallbackContext):
-    if crypto.buyPrice:
-        context.bot.send_message(chat_id=update.effective_chat.id, text=f'{crypto.CryptoToTrade}:{crypto.buyPrice}')
+    if app.buyPrice:
+        context.bot.send_message(chat_id=update.effective_chat.id, text=f'{app.CryptoToTrade}:{app.buyPrice}')
     else:
         context.bot.send_message(chat_id=update.effective_chat.id, text=f'There is not order available')
+
+print('Listening...')
+listenToTelegram()

@@ -1,118 +1,77 @@
-import requests, time, json, logging, talib, csv
-from playsound import playsound
+import requests, talib, csv, order, app
 from numpy import genfromtxt as gft
-from coinex.coinex import CoinEx
-import sys
 
-# cryptoList = ['eth', 'btc', 'doge', 'bnb', 'eos', 'trx', 'crv', 'ltc', 'xrp', 'ada']
+dailyOrder = (15 * 995) / 60 / 24
+whenStopLoss = -.25
 
-# CryptoToTrade = 'ETH'
-# CryptoToTrade = 'BTC'
-# CryptoToTrade = 'DOGE'
-# CryptoToTrade = 'BNB'
-CryptoToTrade = 'CRV'
-# CryptoToTrade = 'EOS'
-# CryptoToTrade = 'TRX'
-# CryptoToTrade = 'LTC'
-# CryptoToTrade = 'XRP'
-# CryptoToTrade = 'ADA'
-# CryptoToTrade = 'CHZ'
-# CryptoToTrade = 'XLM'
-# CryptoToTrade = 'BTT'
-# CryptoToTrade = 'ZEC'
-# CryptoToTrade = 'DOT'
-# CryptoToTrade = 'SHIB'
-# CryptoToTrade = 'SOL'
-# CryptoToTrade = 'KSM'
-
-timeFrame = '1hour'  #1min, 1hour, 1day, 1week
-fiveMinute = 5 * 60  # 5 minute
-dataOfChart = './Data/historyAnalyzer.csv'
-ordersResults = './Trade_Information/historyAnalyzer.csv'
-timePeriodForBB = 20
-nbdev = 1
-saveProfit = 2
-leastProfit = 1
-
-orderCounter = 1
-access_id = '9AB450BFC9574FF2A081D257A691D556'
-secret_key = '1343602FFD3EA564E432286088A534EAEC29F8145D1078EC'
-coinex = CoinEx(access_id, secret_key)
 buyPrice = 0
 sellPrice = 0
-candleIndex = 995  # 3.4 day before
+candleIndex = 995
 currentCheckedCandle = 3
 candlesClose = None
 candlesHighest = None
 candlesLowest = None
 candlesVolume = None
+totalProfit = 0
+orderCounter = 0
+cryptoIndex = 0
+resultAnalyze = {}
 
-def start():
-    while int(currentCheckedCandle) < candleIndex:
-        try:
-            checkListForMakingOrder()
-        except Exception as e:
-            print("Error: ", e)
-            wait(fiveMinute)
-            break
+class DoneWithTheCoin(Exception): pass
+
+def run(cryptosToCheck, update, context):
+    global cryptoList
+    cryptoList = cryptosToCheck
+
+    for crypto in cryptoList:
+        restartTheOrderResults()
+        getDataForAnalyse()
+        start()
+
+    sortedCryptos = sorted(resultAnalyze.items(), key = lambda kv:(kv[1], kv[0]))
+    app.cryptoToTrade = sortedCryptos[-1][0]
+
+    order.createOrder(update, context)
 
 def getDataForAnalyse():
-    csvFile = open(dataOfChart, 'w', newline='')
+    csvFile = open(app.dataOfChart, 'w', newline='')
     candleStickWriter = csv.writer(csvFile, delimiter = ',')
     #date, open, close, high, low, volume, amount | 5m-16h | 30m-336
 
-    request = requests.get(f"https://api.coinex.com/v1/market/kline?market={CryptoToTrade+'USDT'}&type={timeFrame}&limit={candleIndex + 5}")
+    request = requests.get(f"https://api.coinex.com/v1/market/kline?market={app.cryptoToTrade+'USDT'}&type={app.timeFrame}&limit={candleIndex + 5}")
     response = (request.json())['data']
 
     for candles in response:
         candleStickWriter.writerow(candles)
     csvFile.close()
 
-    global candlesClose
-    candlesClose = (gft(dataOfChart, delimiter=','))[:,2]
+    global candlesClose, candlesHighest, candlesLowest, candlesVolume
+    candlesClose = (gft(app.dataOfChart, delimiter=','))[:,2]
+    candlesHighest = (gft(app.dataOfChart, delimiter=','))[:,3]
+    candlesLowest = (gft(app.dataOfChart, delimiter=','))[:,4]
+    candlesVolume = (gft(app.dataOfChart, delimiter=','))[:,5]
 
-    global candlesHighest
-    candlesHighest = (gft(dataOfChart, delimiter=','))[:,3]
-
-    global candlesLowest
-    candlesLowest = (gft(dataOfChart, delimiter=','))[:,4]
-
-    global candlesVolume
-    candlesVolume = (gft(dataOfChart, delimiter=','))[:,5]
-
+def start():
+    while currentCheckedCandle < candleIndex:
+        try:        
+            checkListForMakingOrder()
+        except DoneWithTheCoin:
+            break
+        
 def checkListForMakingOrder():
-    global currentCheckedCandle
-    global buyPrice
+    global currentCheckedCandle, buyPrice
 
-    while int(currentCheckedCandle) != candleIndex:
+    while currentCheckedCandle != candleIndex:
         currentCandleLowest = candlesLowest[int(currentCheckedCandle)]
         buyPrice = currentCandleLowest
 
-        if MOM() and BBPerB() and SMA() and OBV():
+        if OBV():
             createOrder()
         else:
-            wait(fiveMinute)
+            wait(app.fiveMinute)
 
-
-        c = int(currentCheckedCandle)
-        currentCheckedCandle = c + 1
-
-def SMA():
-    SMAs5 = talib.SMA(candlesClose, timeperiod=5)
-    SMAs21 = talib.SMA(candlesClose, timeperiod=21)
-            
-    currentSMA5 = SMAs5[int(currentCheckedCandle)]
-    currentSMA21 = SMAs21[int(currentCheckedCandle)]
-
-    if currentSMA5 > currentSMA21:
-        return True
-
-def BBPerB():
-    upper, middle, lower = talib.BBANDS(candlesClose, matype=0)
-    BBperB = middle[int(currentCheckedCandle)] + (upper[int(currentCheckedCandle)] - middle[int(currentCheckedCandle)]) / 2
-
-    if candlesClose[int(currentCheckedCandle)] > BBperB:
-        return True
+        currentCheckedCandle += 1
+        ifEndTheChartStop()
 
 def OBV():
     OBVs = talib.OBV(candlesClose, candlesVolume)
@@ -120,65 +79,55 @@ def OBV():
     if OBVs[int(currentCheckedCandle) - 1] < OBVs[int(currentCheckedCandle)]:
         return True
 
-def MOM():
-    MOMs = talib.MOM(candlesClose, timeperiod=5)
-    currentMOM = MOMs[int(currentCheckedCandle)]
-
-    if currentMOM > 0:
-        return True
-
 def createOrder():
-    global orderCounter
-    # print('new order. #', orderCounter)
-    orderCounter += 1
-    
+    ifEndTheChartStop()
     waitForSellPosition()
 
 def closeOrder():
-    global candlesClose
-    global currentCheckedCandle
-    global sellPrice
+    global buyPrice, sellPrice, candlesClose, winTrade, lossTrade, zeroTrade, currentCheckedCandle, totalProfit, orderCounter
     sellPrice = candlesClose[int(currentCheckedCandle)]
-    profit = float(sellPrice / buyPrice)*100 - 100
+    profit = (sellPrice / buyPrice)*100 - 100
 
-    saveData(profit)
+    totalProfit += profit
+    orderCounter += 1
 
-    c = int(currentCheckedCandle)
-    currentCheckedCandle = c + 1
-    
-    wait(fiveMinute)
+
+    currentCheckedCandle += 1
+    ifEndTheChartStop()
+    wait(app.fiveMinute)
     start()
 
-def saveData(profit):
-    tradeDataCSV = open(ordersResults, 'a', newline='')
-    writer = csv.writer(tradeDataCSV)
-    detailOfTrade = (str(profit)[:6]), (int(currentCheckedCandle))
-    writer.writerow(detailOfTrade)
-    tradeDataCSV.close()
-
 def restartTheOrderResults():
-    tradeDataCSV = open(ordersResults, 'w', newline='')
-    tradeDataCSV.close()
+    global currentCheckedCandle, orderCounter, totalProfit, buyPrice, sellPrice
+    currentCheckedCandle = 3
+    buyPrice = 0
+    sellPrice = 0
+    orderCounter = 0
+    totalProfit = 0
 
 def wait(second):
     global currentCheckedCandle
-
-    c = int(currentCheckedCandle)
-    currentCheckedCandle = c + second / 60 / 5
+    for i in range(int(second / 60 / 5)):
+        currentCheckedCandle += 1
+        ifEndTheChartStop()
 
 def waitForSellPosition():
     while True:
         checkPosition()
-        wait(fiveMinute)
+        wait(app.fiveMinute)
+
+def ifEndTheChartStop():
+    if (currentCheckedCandle > candleIndex):
+        theEnd()
 
 def checkPosition():
-    upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=timePeriodForBB, nbdevup=nbdev, nbdevdn=nbdev, matype=0)
+    upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=app.timePeriodForBB, nbdevup=app.nbDev, nbdevdn=app.nbDev, matype=0)
 
     profit = checkProfit()
 
-    if candlesHighest[int(currentCheckedCandle)] > upperBB[int(currentCheckedCandle)]  \
-        and profit >= leastProfit \
-        or profit >= saveProfit:
+    if candlesHighest[int(currentCheckedCandle)] > middleBB[int(currentCheckedCandle)]  \
+        and profit >= app.leastProfit \
+        or profit >= app.saveProfit:
             closeOrder()
 
 def checkProfit():
@@ -186,9 +135,6 @@ def checkProfit():
     profit = float(sellPrice / buyPrice)*100 - 100
     return profit
 
-print('Turn on the openVPN')
-print(time.ctime(time.time()))
-
-getDataForAnalyse()
-restartTheOrderResults()
-start()
+def theEnd():
+    resultAnalyze[app.cryptoToTrade] = float(str(totalProfit)[:4])
+    raise DoneWithTheCoin

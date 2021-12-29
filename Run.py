@@ -1,3 +1,0 @@
-import TelegramBot
-
-TelegramBot.listenToTelegram()
