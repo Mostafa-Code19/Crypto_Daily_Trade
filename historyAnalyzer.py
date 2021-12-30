@@ -59,13 +59,17 @@ def checkListForMakingOrder():
     while currentCheckedCandle != candleIndex:
         buyPrice = candlesClose[int(currentCheckedCandle)]
 
-        if MOM() and BBPerB() and SMA() and OBV():
+        if MOM() and BB() and SMA() and OBV() and PriceGreen():
             createOrder()
         else:
             wait(app.fiveMinute)
 
         currentCheckedCandle += 1
         ifEndTheChartStop()
+
+def PriceGreen(candlesClose):
+    if candlesClose[int(currentCheckedCandle)] - candlesClose[int(currentCheckedCandle) - 1] > 0:
+        return True
 
 def OBV():
     OBVs = talib.OBV(candlesClose, candlesVolume)
@@ -76,18 +80,21 @@ def OBV():
 def SMA():
     SMAs5 = talib.SMA(candlesClose, timeperiod=5)
     SMAs21 = talib.SMA(candlesClose, timeperiod=21)
+    SMAs50 = talib.SMA(candlesClose, timeperiod=50)
+    SMAs200 = talib.SMA(candlesClose, timeperiod=200)
             
     currentSMA5 = SMAs5[int(currentCheckedCandle)]
     currentSMA21 = SMAs21[int(currentCheckedCandle)]
+    currentSMA50 = SMAs50[int(currentCheckedCandle)]
+    currentSMA200 = SMAs200[int(currentCheckedCandle)]
 
-    if currentSMA5 > currentSMA21:
+    if currentSMA5 > currentSMA21 or currentSMA50 > currentSMA200:
         return True
 
-def BBPerB():
-    upper, middle, lower = talib.BBANDS(candlesClose, matype=0)
-    above75Percent = middle[int(currentCheckedCandle)] + (upper[int(currentCheckedCandle)] - middle[int(currentCheckedCandle)]) / 2
+def BB(candlesClose):
+    upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=20, nbdevup=app.nbDev, nbdevdn=app.nbDev, matype=0)
 
-    if candlesClose[int(currentCheckedCandle)] > above75Percent:
+    if candlesClose[int(currentCheckedCandle)] <= upperBB[int(currentCheckedCandle)]:
         return True
 
 def MOM():

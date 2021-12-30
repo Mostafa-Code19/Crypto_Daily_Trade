@@ -10,6 +10,8 @@ def createOrder(update, context):
     candlesClose = splittedCandle[:,2]
     app.buyPrice = candlesClose[-1]
 
+    app.boughtTime = time.ctime(time.time())
+
     # side 1 = sell, 2 = buy | effect_type 1 = always valid 2 = immediately or cancel 3 = fill or kill
     # option 1 = place maker orders only deafult 0
 

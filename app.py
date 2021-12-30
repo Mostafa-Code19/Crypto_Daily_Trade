@@ -10,6 +10,7 @@ buyPrice = 0
 sellPrice = 0
 saveProfit = 3
 fiveMinute = 5 * 60
+nbDev = 3
 
 cryptoToTrade = None
 dataOfChart = 'Data/DataForIndicator.csv'
@@ -20,6 +21,7 @@ currentProfitFromOrder = 0
 cryptosReadyForTrade = []
 totalOrders = []
 totalProfits = 0
+boughtTime = None
 
 def wait(second):
     while second:
@@ -90,6 +92,6 @@ def run(update, context):
             historyAnalyzer.run(cryptosReadyForTrade, update, context)
         else:
             print('No Coin Ready. Waiting...')
-            wait(fiveMinute)
+            wait(30 * 60)  # 30 min
     
     waitForNextRun(update, context)
