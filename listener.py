@@ -57,7 +57,7 @@ def iAmOk(update: Update, context: CallbackContext):
     context.bot.send_message(chat_id=update.effective_chat.id, text='I Am Ok Alexander, Thanks For Asking. 💚💻')
 
 def status(update: Update, context: CallbackContext):
-    context.bot.send_message(chat_id=update.effective_chat.id, text=app.run)
+    context.bot.send_message(chat_id=update.effective_chat.id, text=app.startNew)
 
 def currentProfit(update: Update, context: CallbackContext):
     if app.currentProfitFromOrder:
@@ -67,7 +67,7 @@ def currentProfit(update: Update, context: CallbackContext):
 
 def whenBought(update: Update, context: CallbackContext):
     if app.buyPrice:
-        context.bot.send_message(chat_id=update.effective_chat.id, text=f'{app.CryptoToTrade}:{app.buyPrice}')
+        context.bot.send_message(chat_id=update.effective_chat.id, text=f'{app.cryptoToTrade}:{app.buyPrice}')
     else:
         context.bot.send_message(chat_id=update.effective_chat.id, text=f'There is not order available')
 

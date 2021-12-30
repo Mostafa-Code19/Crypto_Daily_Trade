@@ -2,33 +2,30 @@ import requests, talib, csv, order, app
 from numpy import genfromtxt as gft
 
 dailyOrder = (15 * 995) / 60 / 24
-whenStopLoss = -.25
-
 buyPrice = 0
 sellPrice = 0
 candleIndex = 995
 currentCheckedCandle = 3
 candlesClose = None
-candlesHighest = None
-candlesLowest = None
 candlesVolume = None
 totalProfit = 0
 orderCounter = 0
 cryptoIndex = 0
 resultAnalyze = {}
+cryptoToCheck = None
 
 class DoneWithTheCoin(Exception): pass
 
 def run(cryptosToCheck, update, context):
-    global cryptoList
-    cryptoList = cryptosToCheck
-
-    for crypto in cryptoList:
+    for crypto in cryptosToCheck:
+        global cryptoToCheck
+        cryptoToCheck = crypto
         restartTheOrderResults()
         getDataForAnalyse()
         start()
 
     sortedCryptos = sorted(resultAnalyze.items(), key = lambda kv:(kv[1], kv[0]))
+    print(resultAnalyze)
     app.cryptoToTrade = sortedCryptos[-1][0]
 
     order.createOrder(update, context)
@@ -38,17 +35,15 @@ def getDataForAnalyse():
     candleStickWriter = csv.writer(csvFile, delimiter = ',')
     #date, open, close, high, low, volume, amount | 5m-16h | 30m-336
 
-    request = requests.get(f"https://api.coinex.com/v1/market/kline?market={app.cryptoToTrade+'USDT'}&type={app.timeFrame}&limit={candleIndex + 5}")
+    request = requests.get(f"https://api.coinex.com/v1/market/kline?market={cryptoToCheck+'USDT'}&type={app.timeFrame}&limit={candleIndex + 5}")
     response = (request.json())['data']
 
     for candles in response:
         candleStickWriter.writerow(candles)
     csvFile.close()
 
-    global candlesClose, candlesHighest, candlesLowest, candlesVolume
+    global candlesClose, candlesVolume
     candlesClose = (gft(app.dataOfChart, delimiter=','))[:,2]
-    candlesHighest = (gft(app.dataOfChart, delimiter=','))[:,3]
-    candlesLowest = (gft(app.dataOfChart, delimiter=','))[:,4]
     candlesVolume = (gft(app.dataOfChart, delimiter=','))[:,5]
 
 def start():
@@ -62,10 +57,9 @@ def checkListForMakingOrder():
     global currentCheckedCandle, buyPrice
 
     while currentCheckedCandle != candleIndex:
-        currentCandleLowest = candlesLowest[int(currentCheckedCandle)]
-        buyPrice = currentCandleLowest
+        buyPrice = candlesClose[int(currentCheckedCandle)]
 
-        if OBV():
+        if MOM() and BBPerB() and SMA() and OBV():
             createOrder()
         else:
             wait(app.fiveMinute)
@@ -79,23 +73,33 @@ def OBV():
     if OBVs[int(currentCheckedCandle) - 1] < OBVs[int(currentCheckedCandle)]:
         return True
 
+def SMA():
+    SMAs5 = talib.SMA(candlesClose, timeperiod=5)
+    SMAs21 = talib.SMA(candlesClose, timeperiod=21)
+            
+    currentSMA5 = SMAs5[int(currentCheckedCandle)]
+    currentSMA21 = SMAs21[int(currentCheckedCandle)]
+
+    if currentSMA5 > currentSMA21:
+        return True
+
+def BBPerB():
+    upper, middle, lower = talib.BBANDS(candlesClose, matype=0)
+    above75Percent = middle[int(currentCheckedCandle)] + (upper[int(currentCheckedCandle)] - middle[int(currentCheckedCandle)]) / 2
+
+    if candlesClose[int(currentCheckedCandle)] > above75Percent:
+        return True
+
+def MOM():
+    MOMs = talib.MOM(candlesClose, timeperiod=5)
+    currentMOM = MOMs[int(currentCheckedCandle)]
+
+    if currentMOM > 0:
+        return True
+
 def createOrder():
     ifEndTheChartStop()
     waitForSellPosition()
-
-def closeOrder():
-    global buyPrice, sellPrice, candlesClose, winTrade, lossTrade, zeroTrade, currentCheckedCandle, totalProfit, orderCounter
-    sellPrice = candlesClose[int(currentCheckedCandle)]
-    profit = (sellPrice / buyPrice)*100 - 100
-
-    totalProfit += profit
-    orderCounter += 1
-
-
-    currentCheckedCandle += 1
-    ifEndTheChartStop()
-    wait(app.fiveMinute)
-    start()
 
 def restartTheOrderResults():
     global currentCheckedCandle, orderCounter, totalProfit, buyPrice, sellPrice
@@ -121,20 +125,27 @@ def ifEndTheChartStop():
         theEnd()
 
 def checkPosition():
-    upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=app.timePeriodForBB, nbdevup=app.nbDev, nbdevdn=app.nbDev, matype=0)
-
     profit = checkProfit()
 
-    if candlesHighest[int(currentCheckedCandle)] > middleBB[int(currentCheckedCandle)]  \
-        and profit >= app.leastProfit \
-        or profit >= app.saveProfit:
-            closeOrder()
+    if profit >= app.saveProfit:
+        closeOrder()
+
+def closeOrder():
+    global sellPrice, currentCheckedCandle, totalProfit, orderCounter
+    sellPrice = candlesClose[int(currentCheckedCandle)]
+    profit = (sellPrice / buyPrice)*100 - 100
+    totalProfit += profit
+    orderCounter += 1
+    currentCheckedCandle += 1
+    ifEndTheChartStop()
+    wait(app.fiveMinute)
+    start()
 
 def checkProfit():
-    sellPrice = candlesHighest[int(currentCheckedCandle)]
+    sellPrice = candlesClose[int(currentCheckedCandle)]
     profit = float(sellPrice / buyPrice)*100 - 100
     return profit
 
 def theEnd():
-    resultAnalyze[app.cryptoToTrade] = float(str(totalProfit)[:4])
+    resultAnalyze[cryptoToCheck] = float(str(totalProfit)[:4])
     raise DoneWithTheCoin

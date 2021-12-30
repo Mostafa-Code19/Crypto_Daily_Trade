@@ -1,24 +1,21 @@
 import time, csv, requests, indicator, historyAnalyzer
 from playsound import playsound
-
 from dotenv import load_dotenv
+
 load_dotenv()
 
-cryptoToTrade = None
-fiveMinute = 5 * 60
+cryptoList = ['ETH', 'BTC', 'DOGE', 'BNB', 'EOS', 'TRX', 'CRV', 'LTC', 'XRP', 'ADA', 'SHIB', 'DOT', 'XLM', 'BTT', 'ZEC', 'SOL', 'KSM', 'LUNA', 'AVAX', 'MATIC', 'CRO', 'ALGO', 'LINK', 'NEAR', 'BCH', 'OKB', 'ATOM', 'UNI', 'AXS', 'VET', 'SAND', 'THETA', 'EGLD', 'FIL', 'XTZ', 'XMR', 'ETC']
 timeFrame = '15min'  #1min, 1hour, 1day, 1week
-dataOfChart = 'Data/DataForIndicator.csv'
-ordersResults = 'Trade_Information\orderHistory.csv'
 buyPrice = 0
 sellPrice = 0
-timePeriodForBB = 20
-saveProfit = 2
-nbDev = 1.5
-leastProfit = 1
+saveProfit = 3
+fiveMinute = 5 * 60
+
+cryptoToTrade = None
+dataOfChart = 'Data/DataForIndicator.csv'
+ordersResults = 'Trade_Information\orderHistory.csv'
 startNew = True
 orderCounter = 0
-cryptoList = ['ETH', 'BTC', 'DOGE', 'BNB', 'EOS', 'TRX', 'CRV', 'LTC', 'XRP', 'ADA', 'SHIB', 'DOT', 'XLM', 'BTT', 'ZEC', 'SOL', 'KSM', 'LUNA', 'AVAX', 'MATIC', 'CRO', 'ALGO', 'LINK', 'NEAR', 'BCH', 'OKB', 'ATOM', 'UNI', 'AXS', 'VET', 'SAND', 'THETA', 'EGLD', 'FIL', 'XTZ', 'XMR', 'ETC']
-# cryptoList = ['ETH', 'BTC', 'DOGE', 'ADA']
 currentProfitFromOrder = 0
 cryptosReadyForTrade = []
 totalOrders = []

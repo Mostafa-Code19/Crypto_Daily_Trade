@@ -43,13 +43,9 @@ def checkListForStopOrder(update, context):
     app.getDataForAnalyse()
     splittedCandle = gft(app.dataOfChart, delimiter=',')
     candlesClose = splittedCandle[:,2]
-    candlesHighest = splittedCandle[:,3]
-    upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=app.timePeriodForBB, nbdevup=app.nbDev, nbdevdn=app.nbDev, matype=0)
-    profit = checkProfit(candlesHighest[-1])
+    profit = checkProfit(candlesClose[-1])
 
-    if candlesHighest[-1] > middleBB[-1] \
-        and profit >= app.leastProfit \
-        or profit >= app.saveProfit:
+    if profit >= app.saveProfit:
             closeOrder(update, context)
 
 def checkProfit(sellPrice):
@@ -72,8 +68,8 @@ def closeOrder(update, context):
     global sellPrice
     app.getDataForAnalyse()
     splittedCandle = gft(app.dataOfChart, delimiter=',')
-    candlesHighest = splittedCandle[:,3][-1]
-    sellPrice = candlesHighest
+    candlesClose = splittedCandle[:,2][-1]
+    sellPrice = candlesClose
     profit = checkProfit(sellPrice)
     
 
