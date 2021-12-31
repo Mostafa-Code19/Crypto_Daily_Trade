@@ -59,7 +59,7 @@ def checkListForMakingOrder():
     while currentCheckedCandle != candleIndex:
         buyPrice = candlesClose[int(currentCheckedCandle)]
 
-        if MOM() and BB() and SMA() and OBV() and PriceGreen():
+        if OBV() and BB() and PriceGreen():
             createOrder()
         else:
             wait(app.fiveMinute)
@@ -67,7 +67,7 @@ def checkListForMakingOrder():
         currentCheckedCandle += 1
         ifEndTheChartStop()
 
-def PriceGreen(candlesClose):
+def PriceGreen():
     if candlesClose[int(currentCheckedCandle)] - candlesClose[int(currentCheckedCandle) - 1] > 0:
         return True
 
@@ -91,7 +91,7 @@ def SMA():
     if currentSMA5 > currentSMA21 or currentSMA50 > currentSMA200:
         return True
 
-def BB(candlesClose):
+def BB():
     upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=20, nbdevup=app.nbDev, nbdevdn=app.nbDev, matype=0)
 
     if candlesClose[int(currentCheckedCandle)] <= upperBB[int(currentCheckedCandle)]:
