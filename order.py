@@ -82,10 +82,10 @@ def closeOrder(update, context):
     #     )
     # )
 
-    print(f'{app.orderCounter} closed |\nprofit: {str(profit)[:4]}')
+    print(f'{app.orderCounter} closed |\n {app.cryptoToTrade} |\nprofit: {str(profit)[:4]}')
 
     try:
-        context.bot.send_message(chat_id=update.effective_chat.id, text=f'{app.orderCounter} closed |\nprofit: {str(profit)[:4]}')
+        context.bot.send_message(chat_id=update.effective_chat.id, text=f'{app.orderCounter} closed |\n {app.cryptoToTrade} |\nprofit: {str(profit)[:4]}')
     except:
         print('Connection to Telegram Lost!')
 
@@ -94,4 +94,5 @@ def closeOrder(update, context):
     app.currentProfitFromOrder = 0
     app.buyPrice = 0
 
-    # playsound('Alarms/Profit.mp3')
+    app.restartInformationForNewTrade()
+    app.run()

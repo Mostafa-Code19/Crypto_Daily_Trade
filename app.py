@@ -6,12 +6,12 @@ load_dotenv()
 
 cryptoList = ['ETH', 'BTC', 'DOGE', 'BNB', 'EOS', 'TRX', 'CRV', 'LTC', 'XRP', 'ADA', 'SHIB', 'DOT', 'XLM', 'BTT', 'ZEC', 'SOL', 'KSM', 'LUNA', 'AVAX', 'MATIC', 'CRO', 'ALGO', 'LINK', 'NEAR', 'BCH', 'OKB', 'ATOM', 'UNI', 'AXS', 'VET', 'SAND', 'THETA', 'EGLD', 'FIL', 'XTZ', 'XMR', 'ETC']
 timeFrame = '15min'  #1min, 1hour, 1day, 1week
-buyPrice = 0
-sellPrice = 0
 saveProfit = 3
 fiveMinute = 5 * 60
 nbDev = 3
 
+buyPrice = 0
+sellPrice = 0
 cryptoToTrade = None
 dataOfChart = 'Data/DataForIndicator.csv'
 ordersResults = 'Trade_Information\orderHistory.csv'
@@ -50,6 +50,16 @@ def waitForNextRun(update, context):
     while not startNew:
         wait(fiveMinute)
     run(update, context)
+
+def restartInformationForNewTrade():
+    global buyPrice, sellPrice, cryptoToTrade, currentProfitFromOrder, cryptosReadyForTrade, boughtTime
+
+    boughtTime = None
+    cryptoToTrade = None
+    buyPrice = 0
+    sellPrice = 0
+    currentProfitFromOrder = 0
+    cryptosReadyForTrade = 0
 
 def run(update, context):
     while startNew:
