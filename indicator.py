@@ -5,13 +5,14 @@ def checkListForMakingOrder(update, context):
     print(app.cryptoToTrade, end='\r')
     splittedCandle = gft(app.dataOfChart, delimiter=',')
     candlesClose = splittedCandle[:,2]
+    candlesLowest = splittedCandle[:,4]
     candlesVolume = splittedCandle[:,5]
 
     OBV_Ready = OBV(candlesClose, candlesVolume)
-    BB_Ready  = BB(candlesClose)
-    Price_Ready = PriceGreen(candlesClose)
+    SMA_Ready = SMA(candlesClose)
+    BB_Ready = BB(candlesClose, candlesLowest)
     
-    if OBV_Ready and BB_Ready and Price_Ready:
+    if OBV_Ready or SMA_Ready or BB_Ready:
         return app.cryptoToTrade
     else:
         return None
@@ -23,12 +24,15 @@ def OBV(candlesClose, candlesVolume):
     if OBVs[-2] < OBVs[-1]:
         return True
 
-def BB(candlesClose):
-    upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=20, nbdevup=app.nbDev, nbdevdn=app.nbDev, matype=0)
+def SMA(candlesClose):
+    SMAsFast = talib.SMA(candlesClose, timeperiod=8)
+    SMAsSlow = talib.SMA(candlesClose, timeperiod=20)
 
-    if candlesClose[-1] <= upperBB[-1]:
+    if SMAsFast[-1] >= SMAsSlow[-1]:
         return True
 
-def PriceGreen(candlesClose):
-    if candlesClose[-1] - candlesClose[-2] > 0:
+def BB(candlesClose, candlesLowest):
+    upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=app.timePeriodForBB, nbdevup=app.nbDev, nbdevdn=app.nbDev, matype=0)
+
+    if candlesLowest[-1] <= lowerBB[-1]:
         return True

@@ -1,4 +1,4 @@
-import app, talib, csv, time
+import app, talib, csv, time, indicator
 from numpy import genfromtxt as gft
 from prepetual_api.prepApi import CoinexPerpetualApi
 
@@ -45,10 +45,12 @@ def checkListForStopOrder(update, context):
     app.getDataForAnalyse()
     splittedCandle = gft(app.dataOfChart, delimiter=',')
     candlesClose = splittedCandle[:,2]
+    candlesValue = splittedCandle[:,5]
     profit = checkProfit(candlesClose[-1])
 
+
     if profit >= app.saveProfit:
-            closeOrder(update, context)
+        closeOrder(update, context)
 
 def checkProfit(sellPrice):
     profit = float(sellPrice / app.buyPrice)*100 - 100

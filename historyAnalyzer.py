@@ -1,16 +1,18 @@
-import requests, talib, csv, order, app
+import requests, talib, csv, order, app, indicator
 from numpy import genfromtxt as gft
 
-dailyOrder = (15 * 995) / 60 / 24
 buyPrice = 0
 sellPrice = 0
-candleIndex = 995
-currentCheckedCandle = 3
+candleIndex = 200  # from 24 hour history
+dailyOrder = (15 * candleIndex) / 60 / 24
+currentCheckedCandle = 100
 candlesClose = None
 candlesVolume = None
+candlesLowest = None
 totalProfit = 0
 orderCounter = 0
 cryptoIndex = 0
+requiredProfitFromPrevious = 1.5
 resultAnalyze = {}
 cryptoToCheck = None
 
@@ -18,32 +20,39 @@ class DoneWithTheCoin(Exception): pass
 
 def run(cryptosToCheck, update, context):
     for crypto in cryptosToCheck:
+        print(f' {crypto} ', end='\r')
         global cryptoToCheck
         cryptoToCheck = crypto
         restartTheOrderResults()
         getDataForAnalyse()
         start()
 
-    sortedCryptos = sorted(resultAnalyze.items(), key = lambda kv:(kv[1], kv[0]))
     print(resultAnalyze)
-    app.cryptoToTrade = sortedCryptos[-1][0]
 
-    order.createOrder(update, context)
+    sortedCryptos = sorted(resultAnalyze.items(), key = lambda kv:(kv[1], kv[0]))
+    bestCryptoToTradeByHistory = sortedCryptos[-1]
+
+    if bestCryptoToTradeByHistory[1] >= requiredProfitFromPrevious:
+        app.cryptoToTrade = bestCryptoToTradeByHistory[0]
+        order.createOrder(update, context)
+    else:
+        app.run(update, context)
 
 def getDataForAnalyse():
     csvFile = open(app.dataOfChart, 'w', newline='')
     candleStickWriter = csv.writer(csvFile, delimiter = ',')
     #date, open, close, high, low, volume, amount | 5m-16h | 30m-336
 
-    request = requests.get(f"https://api.coinex.com/v1/market/kline?market={cryptoToCheck+'USDT'}&type={app.timeFrame}&limit={candleIndex + 5}")
+    request = requests.get(f"https://api.coinex.com/v1/market/kline?market={cryptoToCheck+'USDT'}&type={app.timeFrame}&limit={candleIndex + 5}", proxies=app.proxies)
     response = (request.json())['data']
 
     for candles in response:
         candleStickWriter.writerow(candles)
     csvFile.close()
 
-    global candlesClose, candlesVolume
+    global candlesClose, candlesVolume, candlesLowest
     candlesClose = (gft(app.dataOfChart, delimiter=','))[:,2]
+    candlesLowest = (gft(app.dataOfChart, delimiter=','))[:,4]
     candlesVolume = (gft(app.dataOfChart, delimiter=','))[:,5]
 
 def start():
@@ -59,17 +68,13 @@ def checkListForMakingOrder():
     while currentCheckedCandle != candleIndex:
         buyPrice = candlesClose[int(currentCheckedCandle)]
 
-        if OBV() and BB() and PriceGreen():
+        if SMA() or BB() or OBV():
             createOrder()
         else:
             wait(app.fiveMinute)
 
         currentCheckedCandle += 1
         ifEndTheChartStop()
-
-def PriceGreen():
-    if candlesClose[int(currentCheckedCandle)] - candlesClose[int(currentCheckedCandle) - 1] > 0:
-        return True
 
 def OBV():
     OBVs = talib.OBV(candlesClose, candlesVolume)
@@ -78,30 +83,16 @@ def OBV():
         return True
 
 def SMA():
-    SMAs5 = talib.SMA(candlesClose, timeperiod=5)
-    SMAs21 = talib.SMA(candlesClose, timeperiod=21)
-    SMAs50 = talib.SMA(candlesClose, timeperiod=50)
-    SMAs200 = talib.SMA(candlesClose, timeperiod=200)
-            
-    currentSMA5 = SMAs5[int(currentCheckedCandle)]
-    currentSMA21 = SMAs21[int(currentCheckedCandle)]
-    currentSMA50 = SMAs50[int(currentCheckedCandle)]
-    currentSMA200 = SMAs200[int(currentCheckedCandle)]
+    SMAsFast = talib.SMA(candlesClose, timeperiod=8)
+    SMAsSlow = talib.SMA(candlesClose, timeperiod=20)
 
-    if currentSMA5 > currentSMA21 or currentSMA50 > currentSMA200:
+    if SMAsFast[int(currentCheckedCandle)] >= SMAsSlow[int(currentCheckedCandle)]:
         return True
 
 def BB():
-    upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=20, nbdevup=app.nbDev, nbdevdn=app.nbDev, matype=0)
+    upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=app.timePeriodForBB, nbdevup=app.nbDev, nbdevdn=app.nbDev, matype=0)
 
-    if candlesClose[int(currentCheckedCandle)] <= upperBB[int(currentCheckedCandle)]:
-        return True
-
-def MOM():
-    MOMs = talib.MOM(candlesClose, timeperiod=5)
-    currentMOM = MOMs[int(currentCheckedCandle)]
-
-    if currentMOM > 0:
+    if candlesLowest[int(currentCheckedCandle)] <= lowerBB[int(currentCheckedCandle)]:
         return True
 
 def createOrder():

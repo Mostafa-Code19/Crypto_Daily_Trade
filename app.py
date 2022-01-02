@@ -6,9 +6,10 @@ load_dotenv()
 
 cryptoList = ['ETH', 'BTC', 'DOGE', 'BNB', 'EOS', 'TRX', 'CRV', 'LTC', 'XRP', 'ADA', 'SHIB', 'DOT', 'XLM', 'BTT', 'ZEC', 'SOL', 'KSM', 'LUNA', 'AVAX', 'MATIC', 'CRO', 'ALGO', 'LINK', 'NEAR', 'BCH', 'OKB', 'ATOM', 'UNI', 'AXS', 'VET', 'SAND', 'THETA', 'EGLD', 'FIL', 'XTZ', 'XMR', 'ETC']
 timeFrame = '15min'  #1min, 1hour, 1day, 1week
-saveProfit = 3
+saveProfit = 1.5
 fiveMinute = 5 * 60
-nbDev = 3
+nbDev = 1.5
+timePeriodForBB = 20
 
 buyPrice = 0
 sellPrice = 0
@@ -23,6 +24,11 @@ totalOrders = []
 totalProfits = 0
 boughtTime = None
 
+proxies = {
+    'http': 'socks5h://localhost:9150',
+    'https': 'socks5h://localhost:9150'
+}
+
 def wait(second):
     while second:
         mins, secs = divmod(second, 60) 
@@ -32,7 +38,7 @@ def wait(second):
         print(timer, end="\r") 
         
 def getDataForAnalyse():
-    request = requests.get(f"https://api.coinex.com/v1/market/kline?market={cryptoToTrade+'USDT'}&type={timeFrame}&limit=150")
+    request = requests.get(f"https://api.coinex.com/v1/market/kline?market={cryptoToTrade+'USDT'}&type={timeFrame}&limit=150", proxies=proxies)
     response = (request.json())['data']
 
     csvFile = open(dataOfChart, 'w', newline='')

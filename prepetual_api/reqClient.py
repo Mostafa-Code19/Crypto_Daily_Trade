@@ -8,6 +8,7 @@ import logging
 import requests
 import time
 import traceback
+import app
 
 
 class RequestClient(object):
@@ -71,7 +72,7 @@ class RequestClient(object):
             return None
 
     def post(self, path, data=None):
-        url = self.host + path
+        url = self.host + path + f'proxies={app.proxies}'
         data = data or {}
         data['timestamp'] = int(time.time()*1000)
         headers = copy.copy(self.headers)
