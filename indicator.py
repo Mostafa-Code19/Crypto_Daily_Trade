@@ -33,6 +33,7 @@ def SMA(candlesClose):
 
 def BB(candlesClose, candlesLowest):
     upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=app.timePeriodForBB, nbdevup=app.nbDev, nbdevdn=app.nbDev, matype=0)
-
-    if candlesLowest[-1] <= lowerBB[-1]:
+    lastLowerBB = lowerBB[-1]
+    
+    if candlesLowest[-1] <= lastLowerBB and candlesClose[-1] >= lastLowerBB:
         return True

@@ -72,7 +72,7 @@ class RequestClient(object):
             return None
 
     def post(self, path, data=None):
-        url = self.host + path + f'proxies={app.proxies}'
+        url = self.host + path
         data = data or {}
         data['timestamp'] = int(time.time()*1000)
         headers = copy.copy(self.headers)

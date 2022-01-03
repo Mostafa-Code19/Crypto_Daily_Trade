@@ -2,7 +2,9 @@ import app, talib, csv, time, indicator
 from numpy import genfromtxt as gft
 from prepetual_api.prepApi import CoinexPerpetualApi
 
+candlesClose = None
 def createOrder(update, context):
+    
     print('Ordering: ', app.cryptoToTrade)
 
     app.getDataForAnalyse()
@@ -27,12 +29,8 @@ def createOrder(update, context):
 
     app.orderCounter += 1
 
-    print(f'#{app.orderCounter} | new order | {app.cryptoToTrade}')
-
-    try:
-        context.bot.send_message(chat_id=update.effective_chat.id, text=f'#{app.orderCounter} | new order | {app.cryptoToTrade}')
-    except:
-        print('Connection to Telegram Lost!')
+    print(f'#{app.orderCounter} | new order | {app.cryptoToTrade} | {app.buyPrice} | {app.boughtTime}')
+    context.bot.send_message(chat_id=update.effective_chat.id, text=f'#{app.orderCounter} | new order | {app.cryptoToTrade} | {app.buyPrice} | {app.boughtTime}')
 
     waitForSellPosition(update, context)
 
@@ -43,9 +41,7 @@ def waitForSellPosition(update, context):
 
 def checkListForStopOrder(update, context):
     app.getDataForAnalyse()
-    splittedCandle = gft(app.dataOfChart, delimiter=',')
-    candlesClose = splittedCandle[:,2]
-    candlesValue = splittedCandle[:,5]
+
     profit = checkProfit(candlesClose[-1])
 
 
@@ -72,8 +68,7 @@ def closeOrder(update, context):
     global sellPrice
     app.getDataForAnalyse()
     splittedCandle = gft(app.dataOfChart, delimiter=',')
-    candlesClose = splittedCandle[:,2][-1]
-    sellPrice = candlesClose
+    sellPrice = candlesClose[-1]
     profit = checkProfit(sellPrice)
     
 
@@ -97,4 +92,4 @@ def closeOrder(update, context):
     app.buyPrice = 0
 
     app.restartInformationForNewTrade()
-    app.run()
+    app.run(update, context)

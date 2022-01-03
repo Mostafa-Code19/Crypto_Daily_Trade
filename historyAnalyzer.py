@@ -43,7 +43,7 @@ def getDataForAnalyse():
     candleStickWriter = csv.writer(csvFile, delimiter = ',')
     #date, open, close, high, low, volume, amount | 5m-16h | 30m-336
 
-    request = requests.get(f"https://api.coinex.com/v1/market/kline?market={cryptoToCheck+'USDT'}&type={app.timeFrame}&limit={candleIndex + 5}", proxies=app.proxies)
+    request = requests.get(f"https://api.coinex.com/v1/market/kline?market={cryptoToCheck+'USDT'}&type={app.timeFrame}&limit={candleIndex + 5}")
     response = (request.json())['data']
 
     for candles in response:
@@ -92,7 +92,7 @@ def SMA():
 def BB():
     upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=app.timePeriodForBB, nbdevup=app.nbDev, nbdevdn=app.nbDev, matype=0)
 
-    if candlesLowest[int(currentCheckedCandle)] <= lowerBB[int(currentCheckedCandle)]:
+    if candlesLowest[int(currentCheckedCandle)] <= lowerBB[int(currentCheckedCandle)] and candlesClose[int(currentCheckedCandle)] >= lowerBB[int(currentCheckedCandle)]:
         return True
 
 def createOrder():
@@ -109,9 +109,14 @@ def restartTheOrderResults():
 
 def wait(second):
     global currentCheckedCandle
-    for i in range(int(second / 60 / 5)):
-        currentCheckedCandle += 1
-        ifEndTheChartStop()
+    if second >= 300:
+        for i in range(int(second / 60 / 5)):
+            currentCheckedCandle += 1
+            ifEndTheChartStop()
+    else:
+        for i in range(second):
+            currentCheckedCandle += 1
+            ifEndTheChartStop()
 
 def waitForSellPosition():
     while True:

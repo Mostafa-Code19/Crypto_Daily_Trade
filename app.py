@@ -24,11 +24,6 @@ totalOrders = []
 totalProfits = 0
 boughtTime = None
 
-proxies = {
-    'http': 'socks5h://localhost:9150',
-    'https': 'socks5h://localhost:9150'
-}
-
 def wait(second):
     while second:
         mins, secs = divmod(second, 60) 
@@ -38,7 +33,7 @@ def wait(second):
         print(timer, end="\r") 
         
 def getDataForAnalyse():
-    request = requests.get(f"https://api.coinex.com/v1/market/kline?market={cryptoToTrade+'USDT'}&type={timeFrame}&limit=150", proxies=proxies)
+    request = requests.get(f"https://api.coinex.com/v1/market/kline?market={cryptoToTrade+'USDT'}&type={timeFrame}&limit=150")
     response = (request.json())['data']
 
     csvFile = open(dataOfChart, 'w', newline='')
@@ -65,7 +60,7 @@ def restartInformationForNewTrade():
     buyPrice = 0
     sellPrice = 0
     currentProfitFromOrder = 0
-    cryptosReadyForTrade = 0
+    cryptosReadyForTrade = []
 
 def run(update, context):
     while startNew:

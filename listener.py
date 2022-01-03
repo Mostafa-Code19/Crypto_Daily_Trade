@@ -2,10 +2,8 @@ from telegram.ext import Updater, CallbackContext, CommandHandler
 from telegram import Update
 import os, app
 
-REQUEST_KWARGS = { 'proxy_url': 'socks5h://localhost:9150' }
-
 telegram_token = os.getenv('TELEGRAM_KEY')
-updater = Updater(telegram_token, use_context=True, request_kwargs=REQUEST_KWARGS)
+updater = Updater(telegram_token, use_context=True)
 dispatcher = updater.dispatcher
 
 def listenToTelegram():
