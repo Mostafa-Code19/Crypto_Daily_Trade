@@ -23,6 +23,7 @@ cryptosReadyForTrade = []
 totalOrders = []
 totalProfits = 0
 boughtTime = None
+previousCrypto = None
 
 def wait(second):
     while second:
@@ -99,8 +100,11 @@ def run(update, context):
         print(cryptosReadyForTrade)
 
         if cryptosReadyForTrade:
-            print('Analyzing...')
-            historyAnalyzer.run(cryptosReadyForTrade, update, context)
+            try:
+                print('Analyzing...')
+                historyAnalyzer.run(cryptosReadyForTrade, update, context)
+            except historyAnalyzer.notEnoughPreviousProfit:
+                wait(30 * 60)
         else:
             print('No Coin Ready. Waiting...')
             wait(30 * 60)  # 30 min

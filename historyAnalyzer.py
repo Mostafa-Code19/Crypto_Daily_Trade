@@ -8,6 +8,7 @@ dailyOrder = (15 * candleIndex) / 60 / 24
 currentCheckedCandle = 100
 candlesClose = None
 candlesVolume = None
+candlesHighest = None
 candlesLowest = None
 totalProfit = 0
 orderCounter = 0
@@ -17,6 +18,7 @@ resultAnalyze = {}
 cryptoToCheck = None
 
 class DoneWithTheCoin(Exception): pass
+class notEnoughPreviousProfit(Exception): pass
 
 def run(cryptosToCheck, update, context):
     for crypto in cryptosToCheck:
@@ -31,12 +33,19 @@ def run(cryptosToCheck, update, context):
 
     sortedCryptos = sorted(resultAnalyze.items(), key = lambda kv:(kv[1], kv[0]))
     bestCryptoToTradeByHistory = sortedCryptos[-1]
+    secondBestCryptoToTradeByHistory = sortedCryptos[-2]
 
-    if bestCryptoToTradeByHistory[1] >= requiredProfitFromPrevious:
-        app.cryptoToTrade = bestCryptoToTradeByHistory[0]
+    if bestCryptoToTradeByHistory[1] >= requiredProfitFromPrevious \
+        and bestCryptoToTradeByHistory[0] != app.previousCrypto:
+            app.cryptoToTrade = bestCryptoToTradeByHistory[0]
+            order.createOrder(update, context)
+
+    elif secondBestCryptoToTradeByHistory[1] >= requiredProfitFromPrevious:
+        app.cryptoToTrade = secondBestCryptoToTradeByHistory[0]
         order.createOrder(update, context)
+
     else:
-        app.run(update, context)
+        raise notEnoughPreviousProfit
 
 def getDataForAnalyse():
     csvFile = open(app.dataOfChart, 'w', newline='')
@@ -50,8 +59,9 @@ def getDataForAnalyse():
         candleStickWriter.writerow(candles)
     csvFile.close()
 
-    global candlesClose, candlesVolume, candlesLowest
+    global candlesClose, candlesVolume, candlesLowest, candlesHighest
     candlesClose = (gft(app.dataOfChart, delimiter=','))[:,2]
+    candlesHighest = (gft(app.dataOfChart, delimiter=','))[:,3]
     candlesLowest = (gft(app.dataOfChart, delimiter=','))[:,4]
     candlesVolume = (gft(app.dataOfChart, delimiter=','))[:,5]
 
@@ -68,7 +78,7 @@ def checkListForMakingOrder():
     while currentCheckedCandle != candleIndex:
         buyPrice = candlesClose[int(currentCheckedCandle)]
 
-        if SMA() or BB() or OBV():
+        if EMA() or BB() or OBV() or MFI():
             createOrder()
         else:
             wait(app.fiveMinute)
@@ -82,11 +92,11 @@ def OBV():
     if OBVs[int(currentCheckedCandle) - 1] < OBVs[int(currentCheckedCandle)]:
         return True
 
-def SMA():
-    SMAsFast = talib.SMA(candlesClose, timeperiod=8)
-    SMAsSlow = talib.SMA(candlesClose, timeperiod=20)
+def EMA():
+    EMAsFast = talib.EMA(candlesClose, timeperiod=9)
+    EMAsSlow = talib.EMA(candlesClose, timeperiod=20)
 
-    if SMAsFast[int(currentCheckedCandle)] >= SMAsSlow[int(currentCheckedCandle)]:
+    if EMAsFast[int(currentCheckedCandle)] >= EMAsSlow[int(currentCheckedCandle)]:
         return True
 
 def BB():
@@ -94,6 +104,19 @@ def BB():
 
     if candlesLowest[int(currentCheckedCandle)] <= lowerBB[int(currentCheckedCandle)] and candlesClose[int(currentCheckedCandle)] >= lowerBB[int(currentCheckedCandle)]:
         return True
+
+def MFI():
+    MFIs = talib.MFI(candlesHighest, candlesLowest, candlesClose, candlesVolume, timeperiod=14)
+
+    if MFIs[int(currentCheckedCandle)] <= 20:
+        return True
+
+def BB_Sell():
+    upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=app.timePeriodForBB, nbdevup=app.nbDev, nbdevdn=app.nbDev, matype=0)
+
+    if candlesHighest[int(currentCheckedCandle)] >= upperBB[int(currentCheckedCandle)]:
+        return True
+
 
 def createOrder():
     ifEndTheChartStop()
@@ -130,7 +153,7 @@ def ifEndTheChartStop():
 def checkPosition():
     profit = checkProfit()
 
-    if profit >= app.saveProfit:
+    if profit >= app.saveProfit and BB_Sell():
         closeOrder()
 
 def closeOrder():

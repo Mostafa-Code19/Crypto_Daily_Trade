@@ -1,6 +1,6 @@
+import os, app, requests
 from telegram.ext import Updater, CallbackContext, CommandHandler
 from telegram import Update
-import os, app
 
 telegram_token = os.getenv('TELEGRAM_KEY')
 updater = Updater(telegram_token, use_context=True)
@@ -54,7 +54,12 @@ def startNew(update: Update, context: CallbackContext):
     app.startNew = True
 
 def iAmOk(update: Update, context: CallbackContext):
-    context.bot.send_message(chat_id=update.effective_chat.id, text='I Am Ok Alexander, Thanks For Asking. 💚💻')
+    response = requests.get(f"https://api.coinex.com/v1/market/kline?market=ETHUSDT&type=15min&limit=1")
+    
+    if response.status_code == 200:
+        context.bot.send_message(chat_id=update.effective_chat.id, text='I Am Ok Alexander, Thanks For Asking. 💚💻')
+    else:
+        context.bot.send_message(chat_id=update.effective_chat.id, text="FUCK COINEX NOT ANSWERING ME!!!\n BUT HEY! I HAVE TELEGRAM INSTEAD SO.. FUCK COINEX 😀")
 
 def status(update: Update, context: CallbackContext):
     context.bot.send_message(chat_id=update.effective_chat.id, text=app.startNew)

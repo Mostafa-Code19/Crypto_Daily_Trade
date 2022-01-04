@@ -2,11 +2,7 @@ import app, talib, csv, time, indicator
 from numpy import genfromtxt as gft
 from prepetual_api.prepApi import CoinexPerpetualApi
 
-candlesClose = None
 def createOrder(update, context):
-    
-    print('Ordering: ', app.cryptoToTrade)
-
     app.getDataForAnalyse()
     splittedCandle = gft(app.dataOfChart, delimiter=',')
     candlesClose = splittedCandle[:,2]
@@ -29,8 +25,8 @@ def createOrder(update, context):
 
     app.orderCounter += 1
 
-    print(f'#{app.orderCounter} | new order | {app.cryptoToTrade} | {app.buyPrice} | {app.boughtTime}')
-    context.bot.send_message(chat_id=update.effective_chat.id, text=f'#{app.orderCounter} | new order | {app.cryptoToTrade} | {app.buyPrice} | {app.boughtTime}')
+    print(f'#{app.orderCounter} | 🍏 {app.cryptoToTrade} | {app.buyPrice} -> {str(app.buyPrice + (app.buyPrice * 1.5) / 100)[:5]} | {app.boughtTime}')
+    context.bot.send_message(chat_id=update.effective_chat.id, text=f'#{app.orderCounter} | 🍏 {app.cryptoToTrade} | {app.buyPrice} -> {str(app.buyPrice + (app.buyPrice * 1.5) / 100)[:5]} | {app.boughtTime}')
 
     waitForSellPosition(update, context)
 
@@ -41,11 +37,13 @@ def waitForSellPosition(update, context):
 
 def checkListForStopOrder(update, context):
     app.getDataForAnalyse()
-
+    splittedCandle = gft(app.dataOfChart, delimiter=',')
+    candlesClose = splittedCandle[:,2]
+    candlesHighest = splittedCandle[:,3]
     profit = checkProfit(candlesClose[-1])
 
 
-    if profit >= app.saveProfit:
+    if profit >= app.saveProfit and indicator.BB_Sell(candlesClose, candlesHighest):
         closeOrder(update, context)
 
 def checkProfit(sellPrice):
@@ -65,11 +63,13 @@ def saveData(tradeData):
     app.totalProfits += float(str(tradeData)[:6])
 
 def closeOrder(update, context):
-    global sellPrice
+    global sellPrice, previousCrypto
     app.getDataForAnalyse()
     splittedCandle = gft(app.dataOfChart, delimiter=',')
-    sellPrice = candlesClose[-1]
+    candlesClose = splittedCandle[:,2][-1]
+    sellPrice = candlesClose
     profit = checkProfit(sellPrice)
+    previousCrypto = app.cryptoToTrade
     
 
     # print(
@@ -79,12 +79,8 @@ def closeOrder(update, context):
     #     )
     # )
 
-    print(f'{app.orderCounter} closed |\n {app.cryptoToTrade} |\nprofit: {str(profit)[:4]}')
-
-    try:
-        context.bot.send_message(chat_id=update.effective_chat.id, text=f'{app.orderCounter} closed |\n {app.cryptoToTrade} |\nprofit: {str(profit)[:4]}')
-    except:
-        print('Connection to Telegram Lost!')
+    print(f'#{app.orderCounter} | 🍎 {app.cryptoToTrade} | profit: {str(profit)[:4]} | {time.ctime(time.time())}')
+    context.bot.send_message(chat_id=update.effective_chat.id, text=f'#{app.orderCounter} | 🍎 {app.cryptoToTrade} | profit: {str(profit)[:4]} | {time.ctime(time.time())}')
 
     saveData(profit)
 
