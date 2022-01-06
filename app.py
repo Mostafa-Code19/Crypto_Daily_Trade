@@ -1,4 +1,4 @@
-import time, csv, requests, indicator, historyAnalyzer
+import time, csv, requests, indicator, historyAnalyzer, math
 from playsound import playsound
 from dotenv import load_dotenv
 
@@ -6,6 +6,7 @@ load_dotenv()
 
 cryptoList = ['ETH', 'BTC', 'DOGE', 'BNB', 'EOS', 'TRX', 'CRV', 'LTC', 'XRP', 'ADA', 'SHIB', 'DOT', 'XLM', 'BTT', 'ZEC', 'SOL', 'KSM', 'LUNA', 'AVAX', 'MATIC', 'CRO', 'ALGO', 'LINK', 'NEAR', 'BCH', 'OKB', 'ATOM', 'UNI', 'AXS', 'VET', 'SAND', 'THETA', 'EGLD', 'FIL', 'XTZ', 'XMR', 'ETC']
 timeFrame = '15min'  #1min, 1hour, 1day, 1week
+timeFrameInInteger = 15
 saveProfit = 1.5
 fiveMinute = 5 * 60
 nbDev = 1.5
@@ -24,6 +25,7 @@ totalOrders = []
 totalProfits = 0
 boughtTime = None
 previousCrypto = None
+waitForNewCandle = 0
 
 def wait(second):
     while second:
@@ -48,7 +50,7 @@ def getDataForAnalyse():
 class EndCoin(Exception): pass
 
 def waitForNextRun(update, context):
-    print('Not Allowed Start New')
+    print('Not Allowed Start New...')
     while not startNew:
         wait(fiveMinute)
     run(update, context)
@@ -63,50 +65,60 @@ def restartInformationForNewTrade():
     currentProfitFromOrder = 0
     cryptosReadyForTrade = []
 
+def pre_Run(update, context):
+    print('Waiting for New Candle...')
+    while not newCandleBegin():
+        wait(waitForNewCandle * 60)
+
+    run(update, context)
+
 def run(update, context):
     while startNew:
-        print('Checking Cryptos indicator...')
-        for crypto in cryptoList:
-            print(f' {crypto}  ', end='\r')
-            
-            while True:
-                try:
-                    global cryptoToTrade
-                    cryptoToTrade = crypto
-                    getDataForAnalyse()
-                    indicatorResult = indicator.checkListForMakingOrder(update, context)
-                    if indicatorResult:
-                        cryptosReadyForTrade.append(indicatorResult)
-                    raise EndCoin
-
-                except EndCoin:
-                    break
-
-                # except Exception as e:
-                #     print('Error...', e)
-                #     print(time.ctime(time.time()))
-
-                #     try:
-                #         context.bot.send_message(chat_id=update.effective_chat.id, text=f'Error!!!! # | time: {time.ctime(time.time())} | cause: {e}')
-                #     except:
-                #         print('Connection to Telegram Lost!')
-
-                #     playsound('Alarms/Rocket.wav')
-                #     wait(fiveMinute)
-
-                #     continue
-
-        print('Coins Ready Indicator:')
-        print(cryptosReadyForTrade)
-
-        if cryptosReadyForTrade:
-            try:
-                print('Analyzing...')
-                historyAnalyzer.run(cryptosReadyForTrade, update, context)
-            except historyAnalyzer.notEnoughPreviousProfit:
-                wait(30 * 60)
-        else:
-            print('No Coin Ready. Waiting...')
-            wait(30 * 60)  # 30 min
+        indicate(update, context)
+        analyzeHistory(update, context)
     
     waitForNextRun(update, context)
+
+def newCandleBegin():
+    global waitForNewCandle
+
+    currentMinute = time.localtime().tm_min
+    howLongIsTheNewCandle = currentMinute % timeFrameInInteger
+
+    if howLongIsTheNewCandle <= 1:
+        return True
+    else:
+        waitForNewCandle = timeFrameInInteger - howLongIsTheNewCandle
+        return False
+
+def indicate(update, context):
+    print('Checking Cryptos indicator...')
+    for crypto in cryptoList:
+        print(f' {crypto}  ', end='\r')
+        
+        while True:
+            try:
+                global cryptoToTrade
+                cryptoToTrade = crypto
+                getDataForAnalyse()
+                indicatorResult = indicator.checkListForMakingOrder(update, context)
+                if indicatorResult:
+                    cryptosReadyForTrade.append(indicatorResult)
+                raise EndCoin
+
+            except EndCoin:
+                break
+
+    print('Coins Ready Indicator:')
+    print(cryptosReadyForTrade)
+
+def analyzeHistory(update, context):
+    if cryptosReadyForTrade:
+        try:
+            print('Analyzing...')
+            historyAnalyzer.run(cryptosReadyForTrade, update, context)
+        except historyAnalyzer.notEnoughPreviousProfit:
+            wait(30 * 60)
+    else:
+        print('No Coin Ready. Waiting...')
+        wait(30 * 60)  # 30 min

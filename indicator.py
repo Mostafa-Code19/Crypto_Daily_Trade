@@ -66,5 +66,7 @@ def BestPriceToBuy():
     candlesLowest = splittedCandle[:,4]
 
     profit = checkProfit(candlesClose[-1])
-    if BB_Bottom(candlesClose, candlesLowest) or profit >= 1:
-        return True
+    if BB_Bottom(candlesClose, candlesLowest) \
+        or profit <= -2 \
+        or profit >= 1:
+            return True

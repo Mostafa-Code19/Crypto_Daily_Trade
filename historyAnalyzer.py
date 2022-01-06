@@ -76,7 +76,7 @@ def checkListForMakingOrder():
     global currentCheckedCandle, buyPrice
 
     while currentCheckedCandle != candleIndex:
-        buyPrice = candlesClose[int(currentCheckedCandle)]
+        buyPrice = candlesClose[currentCheckedCandle]
 
         if EMA() or BB() or OBV() or MFI():
             createOrder()
@@ -89,32 +89,32 @@ def checkListForMakingOrder():
 def OBV():
     OBVs = talib.OBV(candlesClose, candlesVolume)
 
-    if OBVs[int(currentCheckedCandle) - 1] < OBVs[int(currentCheckedCandle)]:
+    if OBVs[currentCheckedCandle - 1] < OBVs[currentCheckedCandle]:
         return True
 
 def EMA():
     EMAsFast = talib.EMA(candlesClose, timeperiod=9)
     EMAsSlow = talib.EMA(candlesClose, timeperiod=20)
 
-    if EMAsFast[int(currentCheckedCandle)] >= EMAsSlow[int(currentCheckedCandle)]:
+    if EMAsFast[currentCheckedCandle] >= EMAsSlow[currentCheckedCandle]:
         return True
 
 def BB():
     upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=app.timePeriodForBB, nbdevup=app.nbDev, nbdevdn=app.nbDev, matype=0)
 
-    if candlesLowest[int(currentCheckedCandle)] <= lowerBB[int(currentCheckedCandle)] and candlesClose[int(currentCheckedCandle)] >= lowerBB[int(currentCheckedCandle)]:
+    if candlesLowest[currentCheckedCandle] <= lowerBB[currentCheckedCandle] and candlesClose[currentCheckedCandle] >= lowerBB[currentCheckedCandle]:
         return True
 
 def MFI():
     MFIs = talib.MFI(candlesHighest, candlesLowest, candlesClose, candlesVolume, timeperiod=14)
 
-    if MFIs[int(currentCheckedCandle)] <= 20:
+    if MFIs[currentCheckedCandle] <= 20:
         return True
 
 def BB_Sell():
     upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=app.timePeriodForBB, nbdevup=app.nbDev, nbdevdn=app.nbDev, matype=0)
 
-    if candlesHighest[int(currentCheckedCandle)] >= upperBB[int(currentCheckedCandle)]:
+    if candlesHighest[currentCheckedCandle] >= upperBB[currentCheckedCandle]:
         return True
 
 def createOrder():
@@ -157,7 +157,7 @@ def checkPosition():
 
 def closeOrder():
     global sellPrice, currentCheckedCandle, totalProfit, orderCounter
-    sellPrice = candlesClose[int(currentCheckedCandle)]
+    sellPrice = candlesClose[currentCheckedCandle]
     profit = (sellPrice / buyPrice)*100 - 100
     totalProfit += profit
     orderCounter += 1
@@ -167,7 +167,7 @@ def closeOrder():
     start()
 
 def checkProfit():
-    sellPrice = candlesClose[int(currentCheckedCandle)]
+    sellPrice = candlesClose[currentCheckedCandle]
     profit = float(sellPrice / buyPrice)*100 - 100
     return profit
 

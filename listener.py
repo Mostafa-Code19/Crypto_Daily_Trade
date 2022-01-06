@@ -45,7 +45,7 @@ def returnTotalProfits(update: Update, context: CallbackContext):
 def start(update: Update, context: CallbackContext):
     context.bot.send_message(chat_id=update.effective_chat.id, text=f'---------------------------------------------------------')
     print('---------------------------------------------------------')
-    app.run(update, context)
+    app.pre_Run(update, context)
 
 def stopNew(update: Update, context: CallbackContext):
     app.startNew = False
