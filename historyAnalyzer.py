@@ -117,7 +117,6 @@ def BB_Sell():
     if candlesHighest[int(currentCheckedCandle)] >= upperBB[int(currentCheckedCandle)]:
         return True
 
-
 def createOrder():
     ifEndTheChartStop()
     waitForSellPosition()

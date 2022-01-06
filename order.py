@@ -2,33 +2,44 @@ import app, talib, csv, time, indicator
 from numpy import genfromtxt as gft
 from prepetual_api.prepApi import CoinexPerpetualApi
 
-def createOrder(update, context):
+def setBuyPrice():
     app.getDataForAnalyse()
     splittedCandle = gft(app.dataOfChart, delimiter=',')
     candlesClose = splittedCandle[:,2]
     app.buyPrice = candlesClose[-1]
 
-    app.boughtTime = time.ctime(time.time())
+def createOrder(update, context):
+    setBuyPrice()
 
-    # side 1 = sell, 2 = buy | effect_type 1 = always valid 2 = immediately or cancel 3 = fill or kill
-    # option 1 = place maker orders only deafult 0
+    print(f'🕒 {app.cryptoToTrade} | Waiting For Enter-Price... | Current Price: {app.buyPrice} | {time.ctime(time.time())}')
+    context.bot.send_message(chat_id=update.effective_chat.id, text=f'🕒 {app.cryptoToTrade} | Waiting For Enter-Price... | Current Price: {app.buyPrice} | {time.ctime(time.time())}')
+    
+    while True:
+        if indicator.BestPriceToBuy():
+            setBuyPrice()
+            app.boughtTime = time.ctime(time.time())
 
-    # print(
-    #     coinexPerpetual.put_market_order(
-    #         app.cryptoToTrade + 'USDT',
-    #         2,  # side:buy
-    #         howMuchShouldIBuy // buyPrice  # convert to amount of crypto to buy
-    #     )
-    # )
+            # side 1 = sell, 2 = buy | effect_type 1 = always valid 2 = immediately or cancel 3 = fill or kill
+            # option 1 = place maker orders only deafult 0
 
-    # playsound('Alarms/Profit.mp3')
+            # print(
+            #     coinexPerpetual.put_market_order(
+            #         app.cryptoToTrade + 'USDT',
+            #         2,  # side:buy
+            #         howMuchShouldIBuy // buyPrice  # convert to amount of crypto to buy
+            #     )
+            # )
 
-    app.orderCounter += 1
+            # playsound('Alarms/Profit.mp3')
 
-    print(f'#{app.orderCounter} | 🍏 {app.cryptoToTrade} | {app.buyPrice} -> {str(app.buyPrice + (app.buyPrice * 1.5) / 100)[:5]} | {app.boughtTime}')
-    context.bot.send_message(chat_id=update.effective_chat.id, text=f'#{app.orderCounter} | 🍏 {app.cryptoToTrade} | {app.buyPrice} -> {str(app.buyPrice + (app.buyPrice * 1.5) / 100)[:5]} | {app.boughtTime}')
+            app.orderCounter += 1
 
-    waitForSellPosition(update, context)
+            print(f'#{app.orderCounter} | Open {app.cryptoToTrade} | {app.buyPrice} -> {str(app.buyPrice + (app.buyPrice * app.saveProfit) / 100)[:5]} | {app.boughtTime}')
+            context.bot.send_message(chat_id=update.effective_chat.id, text=f'#{app.orderCounter} | 🍏 {app.cryptoToTrade} | {app.buyPrice} -> {str(app.buyPrice + (app.buyPrice * app.saveProfit) / 100)[:5]} | {app.boughtTime}')
+
+            waitForSellPosition(update, context)
+        else:
+            app.wait(app.fiveMinute)
 
 def waitForSellPosition(update, context):
     while True:
@@ -79,7 +90,7 @@ def closeOrder(update, context):
     #     )
     # )
 
-    print(f'#{app.orderCounter} | 🍎 {app.cryptoToTrade} | profit: {str(profit)[:4]} | {time.ctime(time.time())}')
+    print(f'#{app.orderCounter} | Close {app.cryptoToTrade} | profit: {str(profit)[:4]} | {time.ctime(time.time())}')
     context.bot.send_message(chat_id=update.effective_chat.id, text=f'#{app.orderCounter} | 🍎 {app.cryptoToTrade} | profit: {str(profit)[:4]} | {time.ctime(time.time())}')
 
     saveData(profit)
