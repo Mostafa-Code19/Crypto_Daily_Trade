@@ -16,7 +16,7 @@ buyPrice = 0
 sellPrice = 0
 cryptoToTrade = None
 dataOfChart = 'Data/DataForIndicator.csv'
-ordersResults = 'Trade_Information\orderHistory.csv'
+ordersResults = 'Trade_Information/orderHistory.csv'
 startNew = True
 orderCounter = 0
 currentProfitFromOrder = 0
@@ -26,6 +26,7 @@ totalProfits = 0
 boughtTime = None
 previousCrypto = None
 waitForNewCandle = 0
+expireBestPriceToEnterIn = 6_300  # in second = 1:45
 
 def wait(second):
     while second:
@@ -67,6 +68,7 @@ def restartInformationForNewTrade():
 
 def pre_Run(update, context):
     print('Waiting for New Candle...')
+
     while not newCandleBegin():
         wait(waitForNewCandle * 60)
 

@@ -9,12 +9,18 @@ def setBuyPrice():
     app.buyPrice = candlesClose[-1]
 
 def createOrder(update, context):
+    global previousCrypto
+    
+    expireWaitingForBestTimeToEnter = time.time() + app.expireBestPriceToEnterIn
+    previousCrypto = app.cryptoToTrade
     setBuyPrice()
 
     print(f'🕒 {app.cryptoToTrade} | Waiting For Enter-Price... | Current Price: {app.buyPrice} | {time.ctime(time.time())}')
     context.bot.send_message(chat_id=update.effective_chat.id, text=f'🕒 {app.cryptoToTrade} | Waiting For Enter-Price... | Current Price: {app.buyPrice} | {time.ctime(time.time())}')
-    
-    while True:
+
+    while time.time() <= expireWaitingForBestTimeToEnter:
+        print(f'expire left: {str((expireWaitingForBestTimeToEnter - time.time()) / 60)[:2]}', end='\r')
+
         if indicator.BestPriceToBuy():
             setBuyPrice()
             app.boughtTime = time.ctime(time.time())
@@ -40,6 +46,8 @@ def createOrder(update, context):
             waitForSellPosition(update, context)
         else:
             app.wait(app.fiveMinute)
+
+    print('Crypto Expire. Start New One...')
 
 def waitForSellPosition(update, context):
     while True:
@@ -74,14 +82,12 @@ def saveData(tradeData):
     app.totalProfits += float(str(tradeData)[:6])
 
 def closeOrder(update, context):
-    global sellPrice, previousCrypto
+    global sellPrice
     app.getDataForAnalyse()
     splittedCandle = gft(app.dataOfChart, delimiter=',')
     candlesClose = splittedCandle[:,2][-1]
     sellPrice = candlesClose
     profit = checkProfit(sellPrice)
-    previousCrypto = app.cryptoToTrade
-    
 
     # print(
     #     coinexPerpetual.close_market(
