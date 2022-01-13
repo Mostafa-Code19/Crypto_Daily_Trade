@@ -4,7 +4,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-cryptoList = ['ETH', 'BTC', 'DOGE', 'BNB', 'EOS', 'TRX', 'CRV', 'LTC', 'XRP', 'ADA', 'SHIB', 'DOT', 'XLM', 'BTT', 'ZEC', 'SOL', 'KSM', 'LUNA', 'AVAX', 'MATIC', 'CRO', 'ALGO', 'LINK', 'NEAR', 'BCH', 'OKB', 'ATOM', 'UNI', 'AXS', 'VET', 'SAND', 'THETA', 'EGLD', 'FIL', 'XTZ', 'XMR', 'ETC']
+cryptoList = [
+    'ATOM', 'SAND', 'ETH', 'SOL', 'DOT', 'SHIB', 'LTC', 'BTC', 'DOGE', 'BNB', 'EOS', 'TRX', 'CRV', 'ETC', \
+    'XRP', 'XLM', 'GRT', 'REN', 'CEL', \
+    'ZEC',  'MATIC', 'JST', \
+    'CRO', 'NEAR', 'BCH', 'OKB', \
+    'ATOM', 'UNI', 'AXS', 'VET',  'THETA', \
+    'EGLD', 'FIL', 'XTZ', 'XMR', 'LINK', 'ADA',
+]
+
 timeFrame = '15min'  #1min, 1hour, 1day, 1week
 timeFrameInInteger = 15
 # saveProfit = 1.5
@@ -52,7 +60,7 @@ class EndCoin(Exception): pass
 def waitForNextRun(update, context):
     print('Not Allowed Start New...')
     while not startNew:
-        wait(thirtySecond)
+        wait(5 * 60)
     run(update, context)
 
 def restartInformationForNewTrade():
@@ -66,9 +74,9 @@ def restartInformationForNewTrade():
     cryptosReadyForTrade = []
 
 def pre_Run(update, context):
-    print('Waiting for New Candle...')
 
     while not newCandleBegin():
+        print('Waiting for New Candle...')
         wait(waitForNewCandle * 60)
 
     run(update, context)
@@ -110,16 +118,15 @@ def indicate(update, context):
             except EndCoin:
                 break
 
-    print('Coins Ready Indicator:')
-    print(cryptosReadyForTrade)
+    
+    if len(cryptosReadyForTrade) != 0:
+        print('Coins Ready Indicator:')
+        print(cryptosReadyForTrade)
 
 def analyzeHistory(update, context):
     if cryptosReadyForTrade:
-        try:
-            print('Analyzing...')
-            historyAnalyzer.run(cryptosReadyForTrade, update, context)
-        except historyAnalyzer.notEnoughPreviousProfit:
-            wait(30 * 60)
+        print('History analyzing...')
+        historyAnalyzer.run(cryptosReadyForTrade, update, context)
     else:
-        print('No Coin Ready. Waiting...')
-        wait(30 * 60)  # 30 min
+        print('There is no coin to trade. next scan in 5min...')
+        wait(5 * 60)  # 10 min
