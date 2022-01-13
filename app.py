@@ -7,11 +7,12 @@ load_dotenv()
 cryptoList = ['ETH', 'BTC', 'DOGE', 'BNB', 'EOS', 'TRX', 'CRV', 'LTC', 'XRP', 'ADA', 'SHIB', 'DOT', 'XLM', 'BTT', 'ZEC', 'SOL', 'KSM', 'LUNA', 'AVAX', 'MATIC', 'CRO', 'ALGO', 'LINK', 'NEAR', 'BCH', 'OKB', 'ATOM', 'UNI', 'AXS', 'VET', 'SAND', 'THETA', 'EGLD', 'FIL', 'XTZ', 'XMR', 'ETC']
 timeFrame = '15min'  #1min, 1hour, 1day, 1week
 timeFrameInInteger = 15
-saveProfit = 1.5
-fiveMinute = 5 * 60
-nbDev = 1.5
+# saveProfit = 1.5
+leastProfit = 1.5
+thirtySecond = 30
+nbDev = 1.4
 timePeriodForBB = 20
-
+# requiredProfitFromPrevious = 1.5
 buyPrice = 0
 sellPrice = 0
 cryptoToTrade = None
@@ -24,9 +25,7 @@ cryptosReadyForTrade = []
 totalOrders = []
 totalProfits = 0
 boughtTime = None
-previousCrypto = None
 waitForNewCandle = 0
-expireBestPriceToEnterIn = 6_300  # in second = 1:45
 
 def wait(second):
     while second:
@@ -53,7 +52,7 @@ class EndCoin(Exception): pass
 def waitForNextRun(update, context):
     print('Not Allowed Start New...')
     while not startNew:
-        wait(fiveMinute)
+        wait(thirtySecond)
     run(update, context)
 
 def restartInformationForNewTrade():

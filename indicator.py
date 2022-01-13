@@ -11,17 +11,51 @@ def checkListForMakingOrder(update, context):
     candlesVolume = splittedCandle[:,5]
 
     OBV_Ready = OBV(candlesClose, candlesVolume)
-    EMA_Ready = EMA(candlesClose)
-    BB_Ready = BB(candlesClose, candlesLowest)
-    MFI_Ready = MFI(candlesHighest, candlesLowest, candlesClose, candlesVolume)
     RSI_Ready = RSI(candlesClose)
+    MACD_Uptrend = MACD_Divergence_Uptrend(candlesClose)
+    EMA_Above_BB_Ready = EMA_Above_BB(candlesClose)
+    EMA_Ready = EMA(candlesClose)
+    BB_LowestBelowLowerCloseAboveLower_Ready = BB_LowestBelowLowerCloseAboveLower(candlesClose, candlesLowest)
+    MFI_Ready = MFI(candlesHighest, candlesLowest, candlesClose, candlesVolume)
     MOM_Ready = MOM(candlesClose)
     MACD_Ready = MACD(candlesClose)
+    EMA_TodayCloseAboveBeforeClose_Ready = EMA_TodayCloseAboveBeforeClose(candlesClose)
 
-    if OBV_Ready or EMA_Ready or BB_Ready or MFI_Ready or RSI_Ready or MOM_Ready or MACD_Ready:
+    if EMA_TodayCloseAboveBeforeClose_Ready and  \
+        (OBV_Ready or RSI_Ready or MACD_Uptrend or \
+            EMA_Above_BB_Ready or EMA_Ready or \
+                BB_LowestBelowLowerCloseAboveLower_Ready or \
+                    MFI_Ready or MOM_Ready or MACD_Ready):
         return app.cryptoToTrade
     else:
         return None
+
+def BB_LowestBelowLowerCloseAboveLower(close, low):
+    upperBB, middleBB, lowerBB = talib.BBANDS(close, timeperiod=app.timePeriodForBB, nbdevup=2, nbdevdn=2, matype=0)
+
+    if low[-1] <= lowerBB[-1] and close[-1] >= lowerBB[-1]:
+        return True
+
+def EMA(close):
+    EMAsFast = talib.EMA(close, timeperiod=9)
+    EMAsSlow = talib.EMA(close, timeperiod=20)
+
+    if EMAsFast[-1] >= EMAsSlow[-1]:
+        return True
+
+def EMA_Above_BB(close):
+    EMAs = talib.EMA(close, timeperiod=20)
+    upperBB, middleBB, lowerBB = talib.BBANDS(close, timeperiod=app.timePeriodForBB, nbdevup=app.nbDev, nbdevdn=app.nbDev, matype=0)
+
+    if EMAs[-1] >= middleBB[-1]:
+        return True
+
+def EMA_TodayCloseAboveBeforeClose(close):
+    the72 = (72 * 60) / 15
+    lowestOf72 = talib.EMA(close, timeperiod=the72)
+
+    if lowestOf72[-1] < close[-1]:
+        return True
 
 def OBV(candlesClose, candlesVolume):
     OBVs = talib.OBV(candlesClose, candlesVolume)
@@ -29,61 +63,45 @@ def OBV(candlesClose, candlesVolume):
     if OBVs[-2] < OBVs[-1]:
         return True
 
-def EMA(candlesClose):
-    EMAsFast = talib.EMA(candlesClose, timeperiod=9)
-    EMAsSlow = talib.EMA(candlesClose, timeperiod=20)
-
-    if EMAsFast[-1] >= EMAsSlow[-1]:
-        return True
-
-def BB(candlesClose, candlesLowest):
-    upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=app.timePeriodForBB, nbdevup=app.nbDev, nbdevdn=app.nbDev, matype=0)
-    lastLowerBB = lowerBB[-1]
-
-    if candlesLowest[-1] <= lastLowerBB and candlesClose[-1] >= lastLowerBB:
-        return True
-
-def MFI(high, low, close, volume):
-    MFIs = talib.MFI(high, low, close, volume, timeperiod=14)
-
-    if MFIs[-1] <= 20:
-        return True
-
-def BB_Sell(close, high):
-    upperBB, middleBB, lowerBB = talib.BBANDS(close, timeperiod=app.timePeriodForBB, nbdevup=app.nbDev, nbdevdn=app.nbDev, matype=0)
-
-    if high[-1] >= upperBB[-1]:
-        return True
-
 def RSI(close):
     RSIs = talib.RSI(close, timeperiod=14)
     
-    if RSIs[-1] >= 50 >= RSIs[-2]:
+    if 50 >= RSIs[-1]:
         return True
+    
+# def RSI_Above50(close):
+#     RSIs = talib.RSI(close, timeperiod=14)
+    
+#     if 50 <= RSIs[-1]:
+#         return True
+  
+def MACD(close):
+    macd, signal, macdhist = talib.MACD(close, fastperiod=12, slowperiod=26, signalperiod=9)
 
-def PRICE(close):
-    print(close)
-    if (close[-1] - close[-2]) > 0:
+    if macd[-2] < macd[-1]:
         return True
+    
+def MACD_Divergence_Uptrend(close):
+    macd, signal, macdhist = talib.MACD(close, fastperiod=12, slowperiod=26, signalperiod=9)
 
+    if macd[-5] < macd[-1]:
+        return True 
+    
+def MACD_Divergence_Downtrend(close):
+    macd, signal, macdhist = talib.MACD(close, fastperiod=12, slowperiod=26, signalperiod=9)
+
+    if macd[-5] > macd[-1]:
+        return True 
+    
 def MOM(close):
     MOMs = talib.MOM(close, timeperiod=5)
     currentMOM = MOMs[-1]
 
     if currentMOM > 0:
         return True
+    
+def MFI(high, low, close, volume):
+    MFIs = talib.MFI(high, low, close, volume, timeperiod=14)
 
-def MACD(close):
-    macd, signal, macdhist = talib.MACD(close, fastperiod=12, slowperiod=26, signalperiod=9)
-
-    if macd[-1] > macd[-2]:
-        return True 
-
-def BestPriceToBuy():
-    app.getDataForAnalyse()
-    splittedCandle = gft(app.dataOfChart, delimiter=',')
-    candleClose = splittedCandle[:,2]
-
-    profit = checkProfit(candleClose[-1])
-    if profit >= 2 and PRICE(candleClose):
+    if MFIs[-1] <= 20:
         return True

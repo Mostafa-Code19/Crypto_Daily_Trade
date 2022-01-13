@@ -13,13 +13,12 @@ candlesLowest = None
 totalProfit = 0
 orderCounter = 0
 cryptoIndex = 0
-requiredProfitFromPrevious = 1.5
 resultAnalyze = {}
 cryptoToCheck = None
 expireBestPriceToEnterIn = 7  # 1 = 15Min
 
 class DoneWithTheCoin(Exception): pass
-class notEnoughPreviousProfit(Exception): pass
+# class notEnoughPreviousProfit(Exception): pass
 
 def run(cryptosToCheck, update, context):
     for crypto in cryptosToCheck:
@@ -34,19 +33,13 @@ def run(cryptosToCheck, update, context):
 
     sortedCryptos = sorted(resultAnalyze.items(), key = lambda kv:(kv[1], kv[0]))
     bestCryptoToTradeByHistory = sortedCryptos[-1]
-    secondBestCryptoToTradeByHistory = sortedCryptos[-2]
 
-    if bestCryptoToTradeByHistory[1] >= requiredProfitFromPrevious \
-        and bestCryptoToTradeByHistory[0] != app.previousCrypto:
-            app.cryptoToTrade = bestCryptoToTradeByHistory[0]
-            order.createOrder(update, context)
+    # if bestCryptoToTradeByHistory[1] >= app.requiredProfitFromPrevious:
+    app.cryptoToTrade = bestCryptoToTradeByHistory[0]
+    order.createOrder(update, context)
 
-    elif secondBestCryptoToTradeByHistory[1] >= requiredProfitFromPrevious:
-        app.cryptoToTrade = secondBestCryptoToTradeByHistory[0]
-        order.createOrder(update, context)
-
-    else:
-        raise notEnoughPreviousProfit
+    # else:
+    #     raise notEnoughPreviousProfit
 
 def getDataForAnalyse():
     csvFile = open(app.dataOfChart, 'w', newline='')
@@ -79,24 +72,21 @@ def checkListForMakingOrder():
     while currentCheckedCandle != candleIndex:
         buyPrice = candlesClose[currentCheckedCandle]
 
-        if EMA() or BB() or OBV() or MFI() or RSI() or MOM() or MACD():
-            expireWaitingForBestTimeToEnter = currentCheckedCandle + app.expireBestPriceToEnterIn
-
-            while currentCheckedCandle <= expireWaitingForBestTimeToEnter:
-                if BestPriceToBuy():
-                    createOrder()
-                else:
-                    wait(5 * 60)
+        if (EMA_Above_BB() or EMA() or OBV() \
+            or BB_LowestBelowLowerCloseAboveLower() or MFI() \
+            or MOM() or MACD() or MACD_Divergence_Uptrend() \
+            or RSI()) and EMA_TodayCloseAboveBeforeClose():
+                createOrder()
         else:
-            wait(app.fiveMinute)
+            wait(app.thirtySecond)
 
         currentCheckedCandle += 1
         ifEndTheChartStop()
 
-def OBV():
-    OBVs = talib.OBV(candlesClose, candlesVolume)
+def BB_LowestBelowLowerCloseAboveLower():
+    upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=app.timePeriodForBB, nbdevup=2, nbdevdn=2, matype=0)
 
-    if OBVs[currentCheckedCandle - 1] < OBVs[currentCheckedCandle]:
+    if candlesLowest[currentCheckedCandle] <= lowerBB[currentCheckedCandle] and candlesClose[currentCheckedCandle] >= lowerBB[currentCheckedCandle]:
         return True
 
 def EMA():
@@ -106,33 +96,18 @@ def EMA():
     if EMAsFast[currentCheckedCandle] >= EMAsSlow[currentCheckedCandle]:
         return True
 
-def BB():
+def EMA_TodayCloseAboveBeforeClose():
+    the72 = (72 * 60) / 15
+    lowestOf72 = talib.EMA(candlesClose, timeperiod=the72)
+
+    if lowestOf72[currentCheckedCandle] < candlesClose[currentCheckedCandle]:
+        return True
+
+def EMA_Above_BB():
+    EMAs = talib.EMA(candlesClose, timeperiod=20)
     upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=app.timePeriodForBB, nbdevup=app.nbDev, nbdevdn=app.nbDev, matype=0)
 
-    if candlesLowest[currentCheckedCandle] <= lowerBB[currentCheckedCandle] and candlesClose[currentCheckedCandle] >= lowerBB[currentCheckedCandle]:
-        return True
-
-def MFI():
-    MFIs = talib.MFI(candlesHighest, candlesLowest, candlesClose, candlesVolume, timeperiod=14)
-
-    if MFIs[currentCheckedCandle] <= 20:
-        return True
-
-def RSI():
-    RSIs = talib.RSI(candlesClose, timeperiod=14)
-    
-    if RSIs[currentCheckedCandle] >= 50 >= RSIs[currentCheckedCandle - 1]:
-        return True
-
-def PRICE():
-    if candlesClose[currentCheckedCandle] - candlesClose[currentCheckedCandle - 1] > 0:
-        return True
-
-def MOM():
-    MOMs = talib.MOM(candlesClose, timeperiod=5)
-    currentMOM = MOMs[currentCheckedCandle]
-
-    if currentMOM > 0:
+    if EMAs[currentCheckedCandle] >= middleBB[currentCheckedCandle]:
         return True
 
 def MACD():
@@ -140,12 +115,49 @@ def MACD():
 
     if macd[currentCheckedCandle - 1] < macd[currentCheckedCandle]:
         return True 
+ 
+def MOM():
+    MOMs = talib.MOM(candlesClose, timeperiod=5)
+    currentMOM = MOMs[currentCheckedCandle]
 
-def BestPriceToBuy():
-    profit = checkProfit()
-
-    if profit >= 2 and PRICE():
+    if currentMOM > 0:
         return True
+    
+def MFI():
+    MFIs = talib.MFI(candlesHighest, candlesLowest, candlesClose, candlesVolume, timeperiod=14)
+
+    if MFIs[currentCheckedCandle] <= 20:
+        return True
+    
+def OBV():
+    OBVs = talib.OBV(candlesClose, candlesVolume)
+
+    if OBVs[currentCheckedCandle - 1] < OBVs[currentCheckedCandle]:
+        return True
+
+def RSI():
+    RSIs = talib.RSI(candlesClose, timeperiod=14)
+    
+    if 50 >= RSIs[currentCheckedCandle]:
+        return True
+
+def RSI_Above50():
+    RSIs = talib.RSI(candlesClose, timeperiod=14)
+    
+    if 50 <= RSIs[currentCheckedCandle]:
+        return True
+
+def MACD_Divergence_Uptrend():
+    macd, signal, macdhist = talib.MACD(candlesClose, fastperiod=12, slowperiod=26, signalperiod=9)
+
+    if macd[currentCheckedCandle - 4] < macd[currentCheckedCandle]:
+        return True 
+
+def MACD_Divergence_Downtrend():
+    macd, signal, macdhist = talib.MACD(candlesClose, fastperiod=12, slowperiod=26, signalperiod=9)
+
+    if macd[currentCheckedCandle - 4] > macd[currentCheckedCandle]:
+        return True 
 
 def createOrder():
     ifEndTheChartStop()
@@ -173,7 +185,7 @@ def wait(second):
 def waitForSellPosition():
     while True:
         checkPosition()
-        wait(app.fiveMinute)
+        wait(app.thirtySecond)
 
 def ifEndTheChartStop():
     if (currentCheckedCandle > candleIndex):
@@ -182,7 +194,7 @@ def ifEndTheChartStop():
 def checkPosition():
     profit = checkProfit()
 
-    if profit >= app.saveProfit:
+    if profit >= app.leastProfit and MACD_Divergence_Downtrend():
         closeOrder()
 
 def closeOrder():
@@ -193,7 +205,7 @@ def closeOrder():
     orderCounter += 1
     currentCheckedCandle += 1
     ifEndTheChartStop()
-    wait(app.fiveMinute)
+    wait(app.thirtySecond)
     start()
 
 def checkProfit():
