@@ -42,9 +42,10 @@ def checkListForStopOrder(update, context):
     splittedCandle = gft(app.dataOfChart, delimiter=',')
     candlesClose = splittedCandle[:,2]
     
-    profit = app.checkProfit()
+    profit = checkProfit()
+    
 
-    if profit >= app.leastProfit and indicator.MACD_Divergence_Downtrend(candlesClose):
+    if profit >= app.leastProfit and (indicator.MACD_Divergence_Downtrend(candlesClose) or indicator.RSI_Overbought(candlesClose)):
         closeOrder(update, context)
 
 def checkProfit():

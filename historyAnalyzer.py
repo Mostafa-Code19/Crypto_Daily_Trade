@@ -75,13 +75,17 @@ def checkListForMakingOrder():
         if (EMA_Above_BB() or EMA() or OBV() \
             or BB_LowestBelowLowerCloseAboveLower() or MFI() \
             or MOM() or MACD() or MACD_Divergence_Uptrend() \
-            or RSI()) and EMA_TodayCloseAboveBeforeClose():
+            ) and SMA_TodayCloseAboveBeforeClose() and SMA_RSI() and RSI():
                 createOrder()
         else:
             wait(app.thirtySecond)
 
         currentCheckedCandle += 1
         ifEndTheChartStop()
+
+# def GREEN():
+#     if candlesClose[currentCheckedCandle] > candlesClose[currentCheckedCandle - 1]:
+#         return True
 
 def BB_LowestBelowLowerCloseAboveLower():
     upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=app.timePeriodForBB, nbdevup=2, nbdevdn=2, matype=0)
@@ -96,11 +100,24 @@ def EMA():
     if EMAsFast[currentCheckedCandle] >= EMAsSlow[currentCheckedCandle]:
         return True
 
-def EMA_TodayCloseAboveBeforeClose():
+def SMA_TodayCloseAboveBeforeClose():
     the72 = (72 * 60) / 15
     lowestOf72 = talib.EMA(candlesClose, timeperiod=the72)
 
     if lowestOf72[currentCheckedCandle] < candlesClose[currentCheckedCandle]:
+        return True
+
+def RSI_Overbought():
+    RSIs = talib.RSI(candlesClose, timeperiod=14)
+    
+    if 70 <= RSIs[currentCheckedCandle]:
+        return True
+    
+def SMA_RSI():
+    RSIs = talib.RSI(candlesClose, timeperiod=14)
+    SMAs = talib.SMA(RSIs, timeperiod=14)
+
+    if 70 > RSIs[currentCheckedCandle] > SMAs[currentCheckedCandle]:
         return True
 
 def EMA_Above_BB():
@@ -138,7 +155,7 @@ def OBV():
 def RSI():
     RSIs = talib.RSI(candlesClose, timeperiod=14)
     
-    if 50 >= RSIs[currentCheckedCandle]:
+    if 70 > RSIs[currentCheckedCandle] > RSIs[currentCheckedCandle - 1]:
         return True
 
 def RSI_Above50():
@@ -194,7 +211,7 @@ def ifEndTheChartStop():
 def checkPosition():
     profit = checkProfit()
 
-    if profit >= app.leastProfit and MACD_Divergence_Downtrend():
+    if profit >= app.leastProfit and (MACD_Divergence_Downtrend() or RSI_Overbought()):
         closeOrder()
 
 def closeOrder():
@@ -214,5 +231,5 @@ def checkProfit():
     return profit
 
 def theEnd():
-    resultAnalyze[cryptoToCheck] = float(str(totalProfit)[:4])
+    resultAnalyze[cryptoToCheck] = float(str(totalProfit)[:6])
     raise DoneWithTheCoin

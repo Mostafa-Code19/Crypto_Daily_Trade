@@ -1,5 +1,4 @@
-import talib, app, indicator, time
-from order import checkProfit
+import talib, app
 from numpy import genfromtxt as gft
 
 def checkListForMakingOrder(update, context):
@@ -19,16 +18,22 @@ def checkListForMakingOrder(update, context):
     MFI_Ready = MFI(candlesHighest, candlesLowest, candlesClose, candlesVolume)
     MOM_Ready = MOM(candlesClose)
     MACD_Ready = MACD(candlesClose)
-    EMA_TodayCloseAboveBeforeClose_Ready = EMA_TodayCloseAboveBeforeClose(candlesClose)
+    SMA_TodayCloseAboveBeforeClose_Ready = SMA_TodayCloseAboveBeforeClose(candlesClose)
+    # GREEN_Ready = GREEN(candlesClose)
+    SMA_RSI_Ready = SMA_RSI(candlesClose)
 
-    if EMA_TodayCloseAboveBeforeClose_Ready and  \
-        (OBV_Ready or RSI_Ready or MACD_Uptrend or \
+    if SMA_TodayCloseAboveBeforeClose_Ready and SMA_RSI_Ready and RSI_Ready and\
+        (OBV_Ready or MACD_Uptrend or \
             EMA_Above_BB_Ready or EMA_Ready or \
                 BB_LowestBelowLowerCloseAboveLower_Ready or \
                     MFI_Ready or MOM_Ready or MACD_Ready):
         return app.cryptoToTrade
     else:
         return None
+
+# def GREEN(close):
+#     if close[-1] > close[-2]:
+#         return True
 
 def BB_LowestBelowLowerCloseAboveLower(close, low):
     upperBB, middleBB, lowerBB = talib.BBANDS(close, timeperiod=app.timePeriodForBB, nbdevup=2, nbdevdn=2, matype=0)
@@ -50,11 +55,18 @@ def EMA_Above_BB(close):
     if EMAs[-1] >= middleBB[-1]:
         return True
 
-def EMA_TodayCloseAboveBeforeClose(close):
-    the72 = (72 * 60) / 15
-    lowestOf72 = talib.EMA(close, timeperiod=the72)
+def SMA_RSI(close):
+    RSIs = talib.RSI(close, timeperiod=14)
+    SMAs = talib.SMA(RSIs, timeperiod=14)
+   
+    if 70 > RSIs[-1] > SMAs[-1]:
+        return True
 
-    if lowestOf72[-1] < close[-1]:
+def SMA_TodayCloseAboveBeforeClose(close):
+    the72 = (72 * 60) / 15
+    SMAs = talib.SMA(close, timeperiod=the72)
+
+    if SMAs[-1] < close[-1]:
         return True
 
 def OBV(candlesClose, candlesVolume):
@@ -66,7 +78,13 @@ def OBV(candlesClose, candlesVolume):
 def RSI(close):
     RSIs = talib.RSI(close, timeperiod=14)
     
-    if 50 >= RSIs[-1]:
+    if 70 > RSIs[-1] > RSIs[-2]:
+        return True
+    
+def RSI_Overbought(close):
+    RSIs = talib.RSI(close, timeperiod=14)
+    
+    if 70 <= RSIs[-1]:
         return True
     
 # def RSI_Above50(close):
@@ -90,7 +108,7 @@ def MACD_Divergence_Uptrend(close):
 def MACD_Divergence_Downtrend(close):
     macd, signal, macdhist = talib.MACD(close, fastperiod=12, slowperiod=26, signalperiod=9)
 
-    if macd[-5] > macd[-1]:
+    if macd[-3] > macd[-1]:
         return True 
     
 def MOM(close):

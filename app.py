@@ -5,12 +5,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 cryptoList = [
-    'ATOM', 'SAND', 'ETH', 'SOL', 'DOT', 'SHIB', 'LTC', 'BTC', 'DOGE', 'BNB', 'EOS', 'TRX', 'CRV', 'ETC', \
-    'XRP', 'XLM', 'GRT', 'REN', 'CEL', \
-    'ZEC',  'MATIC', 'JST', \
-    'CRO', 'NEAR', 'BCH', 'OKB', \
-    'ATOM', 'UNI', 'AXS', 'VET',  'THETA', \
-    'EGLD', 'FIL', 'XTZ', 'XMR', 'LINK', 'ADA',
+    'ETH', 'ATOM', 'SAND', 'SOL', 'DOT', 'SHIB', 'LTC', 'BTC', 'DOGE',
+    'BNB', 'EOS', 'TRX', 'CRV', 'ETC', 'XRP', 'XLM', 'GRT', 'REN', 'CEL',
+    'ZEC',  'MATIC', 'JST', 'CRO', 'NEAR', 'BCH', 'OKB','ATOM', 'UNI',
+    'AXS', 'VET',  'THETA', 'EGLD', 'FIL', 'XTZ', 'XMR', 'LINK', 'ADA',
+    'SERO', 'ATLAS', 'BTM', 'REEF', 'CUBE', 'MBOX'
 ]
 
 timeFrame = '15min'  #1min, 1hour, 1day, 1week
@@ -21,6 +20,8 @@ thirtySecond = 30
 nbDev = 1.4
 timePeriodForBB = 20
 # requiredProfitFromPrevious = 1.5
+candlesLimitToFetch = 300
+
 buyPrice = 0
 sellPrice = 0
 cryptoToTrade = None
@@ -44,7 +45,7 @@ def wait(second):
         print(timer, end="\r") 
         
 def getDataForAnalyse():
-    request = requests.get(f"https://api.coinex.com/v1/market/kline?market={cryptoToTrade+'USDT'}&type={timeFrame}&limit=150")
+    request = requests.get(f"https://api.coinex.com/v1/market/kline?market={cryptoToTrade+'USDT'}&type={timeFrame}&limit={candlesLimitToFetch}")
     response = (request.json())['data']
 
     csvFile = open(dataOfChart, 'w', newline='')
