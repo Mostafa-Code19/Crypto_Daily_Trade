@@ -27,8 +27,8 @@ def createOrder(update, context):
 
     app.orderCounter += 1
 
-    print(f'#{app.orderCounter} | Open {app.cryptoToTrade} | {app.buyPrice} -> {str(app.leastProfit / 100)[:5]} | {app.boughtTime}')
-    context.bot.send_message(chat_id=update.effective_chat.id, text=f'#{app.orderCounter} | 🍏 {app.cryptoToTrade} | {app.buyPrice} -> {str(app.buyPrice + app.leastProfit / 100)[:5]} | {app.boughtTime}')
+    print(f'#{app.orderCounter} | Open {app.cryptoToTrade} | {app.buyPrice} -> {str(app.buyPrice + app.leastProfit / 100)[:5]} | {app.boughtTime}')
+    context.bot.send_message(chat_id=update.effective_chat.id, text=f'#{app.orderCounter} | 🍏 {app.cryptoToTrade} | {app.buyPrice} -> {str(app.buyPrice + app.leastProfit / 100)[:5]} | \n{app.boughtTime}')
 
     waitForSellPosition(update, context)
 
@@ -80,7 +80,7 @@ def closeOrder(update, context):
     # )
 
     print(f'#{app.orderCounter} | Close {app.cryptoToTrade} | profit: {str(profit)[:4]} | {time.ctime(time.time())}')
-    context.bot.send_message(chat_id=update.effective_chat.id, text=f'#{app.orderCounter} | 🍎 {app.cryptoToTrade} | profit: {str(profit)[:4]} | {time.ctime(time.time())}')
+    context.bot.send_message(chat_id=update.effective_chat.id, text=f'#{app.orderCounter} | 🍎 {app.cryptoToTrade} | profit: {str(profit)[:4]} | \n{time.ctime(time.time())}')
 
     saveData(profit)
 

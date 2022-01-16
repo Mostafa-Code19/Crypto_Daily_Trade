@@ -3,9 +3,9 @@ from numpy import genfromtxt as gft
 
 buyPrice = 0
 sellPrice = 0
-candleIndex = 200  # from 24 hour history
+candleIndex = 995  # from 24 hour history
 dailyOrder = (15 * candleIndex) / 60 / 24
-currentCheckedCandle = 100
+currentCheckedCandle = 20
 candlesClose = None
 candlesVolume = None
 candlesHighest = None
@@ -76,6 +76,7 @@ def checkListForMakingOrder():
             or BB_LowestBelowLowerCloseAboveLower() or MFI() \
             or MOM() or MACD() or MACD_Divergence_Uptrend() \
             ) and SMA_TodayCloseAboveBeforeClose() and SMA_RSI() and RSI():
+            
                 createOrder()
         else:
             wait(app.thirtySecond)
@@ -177,6 +178,9 @@ def MACD_Divergence_Downtrend():
         return True 
 
 def createOrder():
+    global buyPrice
+    buyPrice = candlesClose[currentCheckedCandle]
+    
     ifEndTheChartStop()
     waitForSellPosition()
 
@@ -231,5 +235,11 @@ def checkProfit():
     return profit
 
 def theEnd():
-    resultAnalyze[cryptoToCheck] = float(str(totalProfit)[:6])
+    # resultAnalyze[cryptoToCheck] = float(str(totalProfit)[:6])
+    
+    if orderCounter:
+        resultAnalyze[cryptoToCheck] = float(str(totalProfit / orderCounter)[:4])
+    else:
+        resultAnalyze[cryptoToCheck] = 0
+          
     raise DoneWithTheCoin
