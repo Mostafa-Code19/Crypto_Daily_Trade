@@ -15,7 +15,7 @@ cryptoList = [
 timeFrame = '15min'  #1min, 1hour, 1day, 1week
 timeFrameInInteger = 15
 # saveProfit = 1.5
-leastProfit = 1.5
+leastProfit = 1
 thirtySecond = 30
 nbDev = 1.4
 timePeriodForBB = 20
@@ -35,6 +35,7 @@ totalOrders = []
 totalProfits = 0
 boughtTime = None
 waitForNewCandle = 0
+previousCrypto = None
 
 def wait(second):
     while second:
@@ -93,9 +94,9 @@ def newCandleBegin():
     global waitForNewCandle
 
     currentMinute = time.localtime().tm_min
-    howLongIsTheNewCandle = currentMinute % timeFrameInInteger
+    howLongIsTheNewCandle = currentMinute % timeFrameInInteger - 1
 
-    if howLongIsTheNewCandle <= 1:
+    if howLongIsTheNewCandle <= 0:  # if less than 1 minute the new candle begin
         return True
     else:
         waitForNewCandle = timeFrameInInteger - howLongIsTheNewCandle

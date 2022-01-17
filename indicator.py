@@ -19,10 +19,11 @@ def checkListForMakingOrder(update, context):
     MOM_Ready = MOM(candlesClose)
     MACD_Ready = MACD(candlesClose)
     SMA_TodayCloseAboveBeforeClose_Ready = SMA_TodayCloseAboveBeforeClose(candlesClose)
-    # GREEN_Ready = GREEN(candlesClose)
+    GREEN_Ready = GREEN(candlesClose)
     SMA_RSI_Ready = SMA_RSI(candlesClose)
 
-    if SMA_TodayCloseAboveBeforeClose_Ready and SMA_RSI_Ready and RSI_Ready and\
+    if SMA_TodayCloseAboveBeforeClose_Ready and SMA_RSI_Ready and RSI_Ready and GREEN_Ready \
+        and \
         (OBV_Ready or MACD_Uptrend or \
             EMA_Above_BB_Ready or EMA_Ready or \
                 BB_LowestBelowLowerCloseAboveLower_Ready or \
@@ -31,9 +32,9 @@ def checkListForMakingOrder(update, context):
     else:
         return None
 
-# def GREEN(close):
-#     if close[-1] > close[-2]:
-#         return True
+def GREEN(close):
+    if close[-1] > close[-2]:
+        return True
 
 def BB_LowestBelowLowerCloseAboveLower(close, low):
     upperBB, middleBB, lowerBB = talib.BBANDS(close, timeperiod=app.timePeriodForBB, nbdevup=2, nbdevdn=2, matype=0)
@@ -59,8 +60,9 @@ def SMA_RSI(close):
     RSIs = talib.RSI(close, timeperiod=14)
     SMAs = talib.SMA(RSIs, timeperiod=14)
    
-    if 70 > RSIs[-1] > SMAs[-1]:
-        return True
+    if 70 > RSIs[-1] > SMAs[-1] and \
+        SMAs[-1] > SMAs[-2] > SMAs[-3]:
+            return True
 
 def SMA_TodayCloseAboveBeforeClose(close):
     the72 = (72 * 60) / 15

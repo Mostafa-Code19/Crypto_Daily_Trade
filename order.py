@@ -82,8 +82,10 @@ def closeOrder(update, context):
     print(f'#{app.orderCounter} | Close {app.cryptoToTrade} | profit: {str(profit)[:4]} | {time.ctime(time.time())}')
     context.bot.send_message(chat_id=update.effective_chat.id, text=f'#{app.orderCounter} | 🍎 {app.cryptoToTrade} | profit: {str(profit)[:4]} | \n{time.ctime(time.time())}')
 
+
     saveData(profit)
 
+    app.previousCrypto = app.cryptoToTrade
     app.currentProfitFromOrder = 0
     app.buyPrice = 0
 

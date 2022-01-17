@@ -32,14 +32,16 @@ def run(cryptosToCheck, update, context):
     print(resultAnalyze)
 
     sortedCryptos = sorted(resultAnalyze.items(), key = lambda kv:(kv[1], kv[0]))
-    bestCryptoToTradeByHistory = sortedCryptos[-1]
-
-    # if bestCryptoToTradeByHistory[1] >= app.requiredProfitFromPrevious:
-    app.cryptoToTrade = bestCryptoToTradeByHistory[0]
+    bestCryptoToTradeByHistory = sortedCryptos[-1][0]
+    secondBestCryptoToTrade = sortedCryptos[-2][0]
+    
+    if bestCryptoToTradeByHistory != app.previousCrypto or len(sortedCryptos) == 1:
+        app.cryptoToTrade = bestCryptoToTradeByHistory
+    else:
+        app.cryptoToTrade = secondBestCryptoToTrade
+    
+    
     order.createOrder(update, context)
-
-    # else:
-    #     raise notEnoughPreviousProfit
 
 def getDataForAnalyse():
     csvFile = open(app.dataOfChart, 'w', newline='')
@@ -75,8 +77,7 @@ def checkListForMakingOrder():
         if (EMA_Above_BB() or EMA() or OBV() \
             or BB_LowestBelowLowerCloseAboveLower() or MFI() \
             or MOM() or MACD() or MACD_Divergence_Uptrend() \
-            ) and SMA_TodayCloseAboveBeforeClose() and SMA_RSI() and RSI():
-            
+            ) and SMA_TodayCloseAboveBeforeClose() and SMA_RSI() and RSI() and GREEN():
                 createOrder()
         else:
             wait(app.thirtySecond)
@@ -84,9 +85,9 @@ def checkListForMakingOrder():
         currentCheckedCandle += 1
         ifEndTheChartStop()
 
-# def GREEN():
-#     if candlesClose[currentCheckedCandle] > candlesClose[currentCheckedCandle - 1]:
-#         return True
+def GREEN():
+    if candlesClose[currentCheckedCandle] > candlesClose[currentCheckedCandle - 1]:
+        return True
 
 def BB_LowestBelowLowerCloseAboveLower():
     upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=app.timePeriodForBB, nbdevup=2, nbdevdn=2, matype=0)
@@ -118,8 +119,9 @@ def SMA_RSI():
     RSIs = talib.RSI(candlesClose, timeperiod=14)
     SMAs = talib.SMA(RSIs, timeperiod=14)
 
-    if 70 > RSIs[currentCheckedCandle] > SMAs[currentCheckedCandle]:
-        return True
+    if 70 > RSIs[currentCheckedCandle] > SMAs[currentCheckedCandle] and \
+        SMAs[currentCheckedCandle] > SMAs[currentCheckedCandle - 1] > SMAs[currentCheckedCandle - 2] :
+            return True
 
 def EMA_Above_BB():
     EMAs = talib.EMA(candlesClose, timeperiod=20)
@@ -235,11 +237,11 @@ def checkProfit():
     return profit
 
 def theEnd():
-    # resultAnalyze[cryptoToCheck] = float(str(totalProfit)[:6])
+    resultAnalyze[cryptoToCheck] = float(str(totalProfit)[:6])
     
-    if orderCounter:
-        resultAnalyze[cryptoToCheck] = float(str(totalProfit / orderCounter)[:4])
-    else:
-        resultAnalyze[cryptoToCheck] = 0
+    # if orderCounter:
+    #     resultAnalyze[cryptoToCheck] = float(str(totalProfit / orderCounter)[:4])
+    # else:
+    #     resultAnalyze[cryptoToCheck] = 0
           
     raise DoneWithTheCoin
