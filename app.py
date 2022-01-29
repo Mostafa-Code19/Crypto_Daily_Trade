@@ -7,9 +7,9 @@ load_dotenv()
 cryptoList = [
     'ETH', 'ATOM', 'SAND', 'SOL', 'DOT', 'SHIB', 'LTC', 'BTC', 'DOGE',
     'BNB', 'EOS', 'TRX', 'CRV', 'ETC', 'XRP', 'XLM', 'GRT', 'REN', 'CEL',
-    'ZEC',  'MATIC', 'JST', 'CRO', 'NEAR', 'BCH', 'OKB','ATOM', 'UNI',
-    'AXS', 'VET',  'THETA', 'EGLD', 'FIL', 'XTZ', 'XMR', 'LINK', 'ADA',
-    'SERO', 'ATLAS', 'BTM', 'REEF', 'CUBE', 'MBOX'
+    'ZEC',  'MATIC', 'JST', 'CRO', 'NEAR', 'BCH', 'OKB', 'UNI',
+    'AXS', 'VET', 'THETA', 'EGLD', 'FIL', 'XTZ', 'XMR', 'LINK', 'ADA',
+    'ATLAS', 'BTM', 'REEF', 'CUBE', 'MBOX'
 ]
 
 timeFrame = '15min'  #1min, 1hour, 1day, 1week
@@ -45,17 +45,20 @@ def wait(second):
         time.sleep(1) 
         print(timer, end="\r") 
         
-def getDataForAnalyse():
+def getDataForAnalyse(update, context):
     request = requests.get(f"https://api.coinex.com/v1/market/kline?market={cryptoToTrade+'USDT'}&type={timeFrame}&limit={candlesLimitToFetch}")
-    response = (request.json())['data']
+    if request.status_code == 200:
+        response = (request.json())['data']
 
-    csvFile = open(dataOfChart, 'w', newline='')
-    candleStickWriter = csv.writer(csvFile, delimiter = ',')
-    #date, open, close, high, low, volume, amount | 5m-16h | 30m-336
+        csvFile = open(dataOfChart, 'w', newline='')
+        candleStickWriter = csv.writer(csvFile, delimiter = ',')
+        #date, open, close, high, low, volume, amount | 5m-16h | 30m-336
 
-    for candles in response:
-        candleStickWriter.writerow(candles)
-    csvFile.close()
+        for candles in response:
+            candleStickWriter.writerow(candles)
+        csvFile.close()
+    else:
+        run(update, context)  # start again
 
 class EndCoin(Exception): pass
 
@@ -77,9 +80,9 @@ def restartInformationForNewTrade():
 
 def pre_Run(update, context):
 
-    while not newCandleBegin():
-        print('Waiting for New Candle...')
-        wait(waitForNewCandle * 60)
+    # while not newCandleBegin():
+    #     print('Waiting for New Candle...')
+    #     wait(waitForNewCandle * 60)
 
     run(update, context)
 
@@ -111,7 +114,7 @@ def indicate(update, context):
             try:
                 global cryptoToTrade
                 cryptoToTrade = crypto
-                getDataForAnalyse()
+                getDataForAnalyse(update, context)
                 indicatorResult = indicator.checkListForMakingOrder(update, context)
                 if indicatorResult:
                     cryptosReadyForTrade.append(indicatorResult)
@@ -119,7 +122,6 @@ def indicate(update, context):
 
             except EndCoin:
                 break
-
     
     if len(cryptosReadyForTrade) != 0:
         print('Coins Ready Indicator:')
@@ -128,6 +130,7 @@ def indicate(update, context):
 def analyzeHistory(update, context):
     if cryptosReadyForTrade:
         print('History analyzing...')
+        print('analyze:', cryptosReadyForTrade)
         historyAnalyzer.run(cryptosReadyForTrade, update, context)
     else:
         print('There is no coin to trade. next scan in 5min...')

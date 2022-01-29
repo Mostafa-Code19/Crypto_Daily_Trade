@@ -2,14 +2,14 @@ import app, talib, csv, time, indicator
 from numpy import genfromtxt as gft
 from prepetual_api.prepApi import CoinexPerpetualApi
 
-def setBuyPrice():
-    app.getDataForAnalyse()
+def setBuyPrice(update, context):
+    app.getDataForAnalyse(update, context)
     splittedCandle = gft(app.dataOfChart, delimiter=',')
     candlesClose = splittedCandle[:,2]
     app.buyPrice = candlesClose[-1]
 
 def createOrder(update, context):
-    setBuyPrice()
+    setBuyPrice(update, context)
     app.boughtTime = time.ctime(time.time())
 
     # side 1 = sell, 2 = buy | effect_type 1 = always valid 2 = immediately or cancel 3 = fill or kill
@@ -38,18 +38,18 @@ def waitForSellPosition(update, context):
         app.wait(app.thirtySecond)
 
 def checkListForStopOrder(update, context):
-    app.getDataForAnalyse()
+    app.getDataForAnalyse(update, context)
     splittedCandle = gft(app.dataOfChart, delimiter=',')
     candlesClose = splittedCandle[:,2]
     
-    profit = checkProfit()
+    profit = checkProfit(update, context)
     
 
     if profit >= app.leastProfit and (indicator.MACD_Divergence_Downtrend(candlesClose) or indicator.RSI_Overbought(candlesClose)):
         closeOrder(update, context)
 
-def checkProfit():
-    app.getDataForAnalyse()
+def checkProfit(update, context):
+    app.getDataForAnalyse(update, context)
     splittedCandle = gft(app.dataOfChart, delimiter=',')
     candlesClose = splittedCandle[:,2]
     sellPrice = candlesClose[-1]
@@ -70,7 +70,7 @@ def saveData(tradeData):
     app.totalProfits += float(str(tradeData)[:6])
 
 def closeOrder(update, context):
-    profit = checkProfit()
+    profit = checkProfit(update, context)
 
     # print(
     #     coinexPerpetual.close_market(

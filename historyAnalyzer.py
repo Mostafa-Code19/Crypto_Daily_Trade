@@ -20,8 +20,11 @@ expireBestPriceToEnterIn = 7  # 1 = 15Min
 class DoneWithTheCoin(Exception): pass
 # class notEnoughPreviousProfit(Exception): pass
 
-def run(cryptosToCheck, update, context):
-    for crypto in cryptosToCheck:
+def run(cryptosReadyForAnalyze, update, context):
+    global resultAnalyze
+    resultAnalyze = {}
+    
+    for crypto in cryptosReadyForAnalyze:
         print(f' {crypto} ', end='\r')
         global cryptoToCheck
         cryptoToCheck = crypto
@@ -29,20 +32,27 @@ def run(cryptosToCheck, update, context):
         getDataForAnalyse()
         start()
 
-    print(resultAnalyze)
+    if len(resultAnalyze) != 0:
+        print(resultAnalyze)
+        sortedCryptos = sorted(resultAnalyze.items(), key = lambda kv:(kv[1], kv[0]))
+        bestCryptoToTradeByHistory = sortedCryptos[-1][0]
+        
+        if bestCryptoToTradeByHistory != app.previousCrypto or len(sortedCryptos) == 1:
+            app.cryptoToTrade = bestCryptoToTradeByHistory
+        else:
+            secondBestCryptoToTrade = sortedCryptos[-2][0]
+            app.cryptoToTrade = secondBestCryptoToTrade
+        
+        
+        order.createOrder(update, context)
 
-    sortedCryptos = sorted(resultAnalyze.items(), key = lambda kv:(kv[1], kv[0]))
-    bestCryptoToTradeByHistory = sortedCryptos[-1][0]
-    secondBestCryptoToTrade = sortedCryptos[-2][0]
-    
-    if bestCryptoToTradeByHistory != app.previousCrypto or len(sortedCryptos) == 1:
-        app.cryptoToTrade = bestCryptoToTradeByHistory
-    else:
-        app.cryptoToTrade = secondBestCryptoToTrade
-    
-    
-    order.createOrder(update, context)
-
+def start():
+    while currentCheckedCandle < candleIndex:
+        try:        
+            checkListForMakingOrder()
+        except DoneWithTheCoin:
+            break
+        
 def getDataForAnalyse():
     csvFile = open(app.dataOfChart, 'w', newline='')
     candleStickWriter = csv.writer(csvFile, delimiter = ',')
@@ -60,25 +70,19 @@ def getDataForAnalyse():
     candlesHighest = (gft(app.dataOfChart, delimiter=','))[:,3]
     candlesLowest = (gft(app.dataOfChart, delimiter=','))[:,4]
     candlesVolume = (gft(app.dataOfChart, delimiter=','))[:,5]
-
-def start():
-    while currentCheckedCandle < candleIndex:
-        try:        
-            checkListForMakingOrder()
-        except DoneWithTheCoin:
-            break
         
 def checkListForMakingOrder():
-    global currentCheckedCandle, buyPrice, expireWaitingForBestPrice
+    global currentCheckedCandle, buyPrice
 
-    while currentCheckedCandle != candleIndex:
-        buyPrice = candlesClose[currentCheckedCandle]
-
-        if (EMA_Above_BB() or EMA() or OBV() \
-            or BB_LowestBelowLowerCloseAboveLower() or MFI() \
-            or MOM() or MACD() or MACD_Divergence_Uptrend() \
-            ) and SMA_TodayCloseAboveBeforeClose() and SMA_RSI() and RSI() and GREEN():
+    while True:
+        if  EMA_Above_BB() and \
+            MACD() and \
+            SMA_RSI() and \
+            SMA() and \
+            GREEN():
+                buyPrice = candlesClose[currentCheckedCandle]
                 createOrder()
+                
         else:
             wait(app.thirtySecond)
 
@@ -117,12 +121,21 @@ def RSI_Overbought():
     
 def SMA_RSI():
     RSIs = talib.RSI(candlesClose, timeperiod=14)
-    SMAs = talib.SMA(RSIs, timeperiod=14)
+    SMAs = talib.SMA(RSIs, timeperiod=19)
 
-    if 70 > RSIs[currentCheckedCandle] > SMAs[currentCheckedCandle] and \
-        SMAs[currentCheckedCandle] > SMAs[currentCheckedCandle - 1] > SMAs[currentCheckedCandle - 2] :
+    if 60 > RSIs[currentCheckedCandle] > SMAs[currentCheckedCandle] > 50:
             return True
 
+def SMA():
+    SMAs1 = talib.SMA(candlesClose, timeperiod=200)
+    SMAs2 = talib.SMA(candlesClose, timeperiod=100)
+    SMAs3 = talib.SMA(candlesClose, timeperiod=14)
+
+    EMAs1 = talib.EMA(candlesClose, timeperiod=105)
+
+    if SMAs1[currentCheckedCandle] < SMAs2[currentCheckedCandle] < EMAs1[currentCheckedCandle] < SMAs3[currentCheckedCandle] < candlesClose[currentCheckedCandle]:
+        return True
+    
 def EMA_Above_BB():
     EMAs = talib.EMA(candlesClose, timeperiod=20)
     upperBB, middleBB, lowerBB = talib.BBANDS(candlesClose, timeperiod=app.timePeriodForBB, nbdevup=app.nbDev, nbdevdn=app.nbDev, matype=0)
